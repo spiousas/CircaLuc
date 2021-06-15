@@ -52,7 +52,7 @@ shinyServer(function(input, output) {
              Lumin_smoothed = as.numeric(ma(Lumin_detrended, input$smo)))
   })
   
-  output$rawPlot <- renderPlot({
+    output$rawPlot <- renderPlot({
     
     if (input$subject=="All") {
       data.df.plot <- data.df

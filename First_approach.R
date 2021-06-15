@@ -1,59 +1,93 @@
 library(tidyverse)
 library(zoo)
-library(pracma)
-library(forecast)
+#library(pracma)
+#library(forecast)
+#library(ggrepel)
+library(ggpubr)
+library(gsignal)
+library(RColorBrewer)
 
 setwd("~/Dropbox/Estadistica/CircaLuc")
 data.df <- read_csv("./data/data.csv") %>%
-           gather(key = "Subject", 
-                  value = "Lumin", 
-                  -ZTTime , 
-                  factor_key=TRUE) %>%
-           group_by(Subject) %>%
-           summarise(ZTTime = ZTTime[1:length(na.trim(Lumin))], 
-                     Lumin=na.trim(Lumin)) %>% # Clean trailing NAs in Lumin
+  pivot_longer(!ZTTime, 
+               names_to = "well", 
+               values_to = "lumin") %>%
+           group_by(well) %>%
+           summarise(ZTTime = ZTTime[1:length(na.trim(lumin))], 
+                     lumin = na.trim(lumin)) %>% # Clean trailing NAs in Lumin
            mutate(ZTTime = na.approx(ZTTime), # Linear approximation of missing points the time vector
-                  Lumin = na.approx(Lumin), # Linear approximation of missing luminosity
-                  Z_Lumin = (Lumin-mean(Lumin, na.rm=TRUE))/sd(Lumin, na.rm=TRUE)) # Z-scored lumin
+                  lumin = na.approx(lumin), # Linear approximation of missing luminosity
+                  Z_lumin = (lumin-mean(lumin, na.rm=TRUE))/sd(lumin, na.rm=TRUE)) # Z-scored lumin
 
 fig.mean.time <- data.df %>%
-  filter(Subject == "A01") %>%
-  ggplot(aes(x = ZTTime, y = Z_Lumin)) + 
-                geom_line()
+  dplyr::filter(well == "A01") %>%
+  ggplot(aes(x = ZTTime, y = Z_lumin)) + 
+                geom_line() +
+  theme_pubclean() +
+  labs(x = "Time", y = "Luminosity")
 fig.mean.time
 
-det <- 48
-ZTcorte <- 48
+det <- 48 # Ancho de la ventana de detrending en horas
 fus <- 30 # Sampling time en minutos
 # NACHO - Parámetros que se van a usar más adelante
 mu <- fus/60; # Sampling time en horas
-su <- 60/fus; # sampling time en segundos
+su <- 60/fus; # Samples por hora
 smo <- 12
 
-ZTLD <- 120
-ZTDD <- 168
+ZTcorte <- 48 # Inicio de la señal a considerar
+ZTLD <- 120 # Fin de la sección LD
+ZTDD <- 168 # Fin de la sección DD
 
-# NACHO - Longitud de la ventana de detrending?
-ventana <- det * su
-convi <- rep(1, ventana)
+# NACHO - Loa ventana de detrending
+win_det <- det * su # Ancho de la ventana de detrending en samples
+convwin_det <- rep(1, win_det) # La ventana
+
+# NACHO - Loa ventana de detrending
+win_smo <- smo * su # Ancho de la ventana de smoothing en samples
+convwin_smo <- rep(1, win_smo) # La ventana
 
 # Aca iria la parte de interpolacion
 data.df <- data.df %>%
-  group_by(Subject) %>% 
-  mutate(Ys = convolve(abs(Lumin), convi, type = "open")[1:length(Lumin)],
-         Ys = c(rep(Ys[ventana/2+1], ventana/2), 
-                Ys[(ventana/2+1):(length(Ys)-ventana/2)], 
-                rep(Ys[length(Ys)-ventana/2], ventana/2)),
-         Lumin_weighted = Lumin/Ys,
-         Section = ifelse(ZTTime>ZTcorte & ZTTime<=ZTLD, "LD",
-                          ifelse(ZTTime>ZTLD & ZTTime<=ZTDD, "DD", NA))) %>%
+  group_by(well) %>% 
+  mutate(Ys = gsignal::conv(abs(lumin), convwin_det, shape = "same"),
+         # Ys = c(rep(Ys[det*su/2+1], det*su/2), 
+         #        Ys[(det*su/2+1):(length(Ys)-det*su/2)], 
+         #        rep(Ys[length(Ys)-det*su/2], det*su/2)),
+         lumin_weighted = lumin/Ys,
+         section = ifelse(ZTTime>=ZTcorte & ZTTime<=ZTLD, "LD",
+                          ifelse(ZTTime>ZTLD & ZTTime<=ZTDD, "DD", "NonU"))) %>%
   ungroup() %>%
-  group_by(Subject, Section) %>%
-  mutate(Lumin_detrended = detrend(Lumin_weighted, "linear"),
-         Lumin_smoothed = as.numeric(ma(Lumin_detrended, smo)))
+  group_by(well, section) %>%
+  mutate(lumin_detrended = detrend(lumin_weighted, "linear")[,1],
+         lumin_smoothed = gsignal::conv(lumin_detrended, convwin_smo, shape = "same")) %>%
+  ungroup() %>% 
+  select(-c(Ys, lumin_weighted))
 
 fig.mean.convolved <- data.df %>%
-  filter((Section == "LD")) %>%
-  ggplot(aes(x = ZTTime, y = Lumin_smoothed, colour = Subject)) + 
-  geom_line()
+  dplyr::filter(section == "LD") %>%
+  ggplot(aes(x = ZTTime, 
+             y = lumin_smoothed,
+             colour = well)) + 
+  geom_line() + 
+  scale_color_manual(values = rep(brewer.pal(5,"Accent"),times=10)) +
+  theme_pubclean() +
+  labs(x = "Time", y = "Luminosity") +
+  theme(legend.position = "none")
 fig.mean.convolved
+
+source("period_estim_funs.R")
+
+periods <- data.df %>%
+  dplyr::filter(section %in% c("LD", "DD")) %>%
+  group_by(well, section) %>%
+  summarise(LS_period(signal = lumin_smoothed,
+                      time = ZTTime,
+                      from_freq = 0.035,
+                      to_freq = .05,
+                      oversampling_freq = 30 ))
+
+periods %>% ggplot(aes(x = period,
+           color = section,
+           fill = section)) +
+  geom_histogram() +
+  theme_pubclean()
