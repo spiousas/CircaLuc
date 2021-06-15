@@ -11,6 +11,7 @@ library(shiny)
 library(viridis)
 library(tidyverse)
 library(zoo)
+library(shinyjs)
 #library(forecast)
 #library(pracma)
 #library(DT)
@@ -24,7 +25,14 @@ shinyServer(function(input, output) {
   source("period_estim_funs.R")
   
   # Get and reshape the data
-  data.df <- read_csv("./data/data.csv") %>%
+  data.df <- reactive({
+    file <- input$input_file
+    ext <- tools::file_ext(file$datapath)
+    
+    req(file)
+    validate(need(ext == "csv", "Please upload a csv file"))
+    
+    read_csv(file$datapath) %>%
     pivot_longer(!ZTTime,
                  names_to = "well",
                  values_to = "lumin") %>%
@@ -38,11 +46,12 @@ shinyServer(function(input, output) {
       # Linear approximation of missing luminosity
       Z_lumin = (lumin - mean(lumin, na.rm = TRUE)) / sd(lumin, na.rm =
                                                            TRUE) # Z-scored lumin
-    ) 
+    )
+  })
   
   # Detrending and smoothing
   smoothed.df <- reactive({
-    data.df %>%
+    data.df() %>%
       group_by(well) %>%
       mutate(
         Ys = gsignal::conv(abs(lumin),
@@ -69,7 +78,7 @@ shinyServer(function(input, output) {
   })
   
   periods.df <- reactive({
-    switch(input$method,
+    switch(input$methodLD,
            ls = {
              periods.df <- smoothed.df() %>%
                dplyr::filter(section %in% c("LD", "DD")) %>%
@@ -92,16 +101,16 @@ shinyServer(function(input, output) {
   output$rawPlot <- renderPlot({
     
     if (input$well == "All") {
-      data.df.plot <- data.df
+      data.df.plot <- data.df()
       plot.title <- "Raw luminosity of all the wells"
     } else if (input$well == "Mean") {
-      data.df.plot <- data.df %>%
+      data.df.plot <- data.df() %>%
         group_by(ZTTime) %>%
         summarise(lumin = mean(lumin)) %>%
         mutate(well = "mean")
       plot.title <- "Raw luminosity of the mean"
     } else {
-      data.df.plot <- data.df %>% dplyr::filter(well == input$well)
+      data.df.plot <- data.df() %>% dplyr::filter(well == input$well)
       plot.title <- paste0("Raw luminosity of well ", input$well)
     }
     
@@ -179,6 +188,19 @@ shinyServer(function(input, output) {
     periods.df()
     )
   
+  # Download ####
+  
+  # Hide download action buttons when there is no file loaded
+  observe({
+    if (is.null(input$input_file)) {
+      shinyjs::disable("downloadData")
+      shinyjs::disable("downloadPeriods")
+    } else {
+      shinyjs::enable("downloadData")
+      shinyjs::enable("downloadPeriods")
+    }
+  })
+  
   # Downloadable csv of periods dataset
   output$downloadPeriods <- downloadHandler(
     filename = function() {
@@ -191,7 +213,7 @@ shinyServer(function(input, output) {
     }
   )
   
-  # Downloadable csv of smoothed dataset
+  # Downloadable csv of pre-processed data
   output$downloadData <- downloadHandler(
     filename = function() {
       "smoothed_data.csv"
@@ -204,6 +226,5 @@ shinyServer(function(input, output) {
                 file, row.names = FALSE)
     }
   )
-  
   
 })
