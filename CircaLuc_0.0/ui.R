@@ -14,55 +14,94 @@ library(shinyjs)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
-  
   # Application title
   titlePanel("CircaLuc pilot"),
-
-  # Sidebar with a slider input for number of bins 
+  
+  # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
       selectInput("well", "Well:",
-                  c("All", "Mean", as.character(unique(data.df$well)))),
-      selectInput("method", "Method:",
-                  c("Fourier" = "fourier",
-                    "Wavelet" = "wavelet",
-                    "LS" = "ls",
-                    "Mesa" = "mesa",
-                    "24 hs" = "24hs",
-                    "LS Graph" = "lsgraph")),
-      numericInput("sp", "Sampling period (mins):", 30, min = 1, max = 100),
-      numericInput("smo", "Smoothing width (hours):", 10, min = 1, max = 100),
-      numericInput("det", "Detrend length (hours):", 48, min = 1, max = 100),
-      numericInput("ZTcorte", "Start of LD section (hours):", 48, min = 1, max = 125),
-      numericInput("ZTLD", "End of LD section (hours):", 120, min = 1, max = 250),
-      numericInput("ZTDD", "End of DD section (hours)::", 168, min = 1, max = 250),
+                  c("All", "Mean", as.character(
+                    unique(data.df$well)
+                  ))),
+      selectInput(
+        "method",
+        "Method:",
+        c(
+          "Fourier" = "fourier",
+          "Wavelet" = "wavelet",
+          "LS" = "ls",
+          "Mesa" = "mesa",
+          "24 hs" = "24hs",
+          "LS Graph" = "lsgraph"
+        )
+      ),
+      numericInput(
+        "sp",
+        "Sampling period (mins):",
+        30,
+        min = 1,
+        max = 100
+      ),
+      numericInput(
+        "smo",
+        "Smoothing width (hours):",
+        10,
+        min = 1,
+        max = 100
+      ),
+      numericInput(
+        "det",
+        "Detrend length (hours):",
+        48,
+        min = 1,
+        max = 100
+      ),
+      numericInput(
+        "ZTcorte",
+        "Start of LD section (hours):",
+        48,
+        min = 1,
+        max = 125
+      ),
+      numericInput(
+        "ZTLD",
+        "End of LD section (hours):",
+        120,
+        min = 1,
+        max = 250
+      ),
+      numericInput(
+        "ZTDD",
+        "End of DD section (hours)::",
+        168,
+        min = 1,
+        max = 250
+      ),
       downloadButton("downloadData", "Download processed data"),
       downloadButton("downloadPeriods", "Download periods")
       
     ),
     
     # Show a plot of the generated distribution
-    mainPanel(
-      
-      tabsetPanel(type = "tabs",
-                  tabPanel(
-                    "Plot",
-                    plotOutput("rawPlot"),
-                    selectInput("section", "Section:",
-                                c("LD", "DD")),
-                    plotOutput("detrendedPlot")
-                  ),
-                  tabPanel(
-                    "Tables",
-                    fluidRow(
-                      column(12,
-                             dataTableOutput('table')
-                      )
-                    )
-                  ))
-      
-       
-    )
+    mainPanel(tabsetPanel(
+      type = "tabs",
+      tabPanel(
+        "Lumin",
+        plotOutput("rawPlot"),
+        selectInput("section_raw", "Section:",
+                    c("LD", "DD")),
+        plotOutput("detrendedPlot")
+      ),
+      tabPanel("Periods",
+               fluidRow(column(
+                 12,
+                 dataTableOutput('table')
+               ))),
+      tabPanel("Cosinor",
+               selectInput("section_cosinor", "Section:",
+                           c("LD", "DD")),
+               plotOutput("cosinorPlot"))
+    ))
   )
-  )
-)
+))

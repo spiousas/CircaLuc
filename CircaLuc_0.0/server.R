@@ -78,7 +78,7 @@ shinyServer(function(input, output) {
                  LS_period(
                    signal = lumin_smoothed,
                    time = ZTTime,
-                   from_freq = 0.035,
+                   from_freq = .035,
                    to_freq = .05,
                    oversampling_freq = 30
                  )
@@ -134,7 +134,37 @@ shinyServer(function(input, output) {
     }
     
     smoothed.df.plot %>%
-      dplyr::filter((section == as.character(input$section))) %>%
+      dplyr::filter((section == as.character(input$section_raw))) %>%
+      drop_na() %>%
+      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
+      geom_line() +
+      ggtitle(paste0(plot.title, " in ", as.character(input$section))) +
+      scale_colour_viridis(discrete = TRUE) +
+      theme_classic() +
+      theme(legend.position = "none")
+    
+  })
+  
+  output$cosinorPlot <- renderPlot({
+    
+    if (input$well == "All") {
+      smoothed.df.plot <- smoothed.df()
+      plot.title <- "Smoothed luminosity of all the wells"
+    } else if (input$well == "Mean") {
+      smoothed.df.plot <- smoothed.df() %>%
+        group_by(ZTTime, section) %>%
+        summarise(lumin_smoothed = mean(lumin_smoothed)) %>%
+        mutate(well = "mean")
+      plot.title <- "Smoothed luminosity of the mean"
+    } else {
+      smoothed.df.plot <- smoothed.df() %>%
+        dplyr::filter(well == input$well)
+      plot.title <-
+        paste0("Smoothed luminosity of well ", input$well)
+    }
+    
+    smoothed.df.plot %>%
+      dplyr::filter((section == as.character(input$section_cosinor))) %>%
       drop_na() %>%
       ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
       geom_line() +
@@ -148,7 +178,6 @@ shinyServer(function(input, output) {
   output$table <- renderDataTable(
     periods.df()
     )
-  
   
   # Downloadable csv of periods dataset
   output$downloadPeriods <- downloadHandler(
