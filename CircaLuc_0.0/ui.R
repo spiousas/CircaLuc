@@ -24,10 +24,13 @@ shinyUI(fluidPage(
       fileInput("input_file",
                 "Choose input data (.csv)",
                 accept = ".csv"),
-      selectInput("well", "Well:", 
-                  c("All", "Mean", as.character(unique(data.df$well))), width = 100),
+      selectInput("well", "Well(s):", 
+                  multiple = TRUE,
+                  choices = "",
+                  selected = "",
+                  width = 180),
       numericInput("sp", "Sampling period (mins):", 30, 
-                   min = 1, max = 100, width = 100 ),
+                   min = 1, max = 100, width = 180 ),
       downloadButton("downloadData", "Download processed data"),
       downloadButton("downloadPeriods", "Download periods")
     ),
@@ -38,29 +41,47 @@ shinyUI(fluidPage(
         type = "tabs",
         tabPanel(
           "RAW data",
-          plotOutput("rawPlot")
-          ),
+          fluidPage(
+            fluidRow(
+              selectInput("raw_y_scale", "Luminosity scale:",
+                          c("linear", "log2", "log10")),
+              plotOutput("rawPlot")),
+          )
+        ),
         tabPanel(
           "Processed data",
           fluidPage(
             fluidRow(
+              h3("Preprocessing parameters:"),
               column(width = 4,
-                     numericInput("ZTcorte", "Start of LD section (hours):", 48, 
-                                  min = 1, max = 125, width = 150),
-                     numericInput("smo","Smoothing width (hours):", 10,
-                       min = 1, max = 100, width = 150)
+                     numericInput("ZTcorte", "Start of LD section (hs):", 48, 
+                                  min = 1, 
+                                  max = 125, 
+                                  width = 160),
+                     numericInput("smo","Smoothing width (s):", 10,
+                                  min = 1, 
+                                  max = 100, 
+                                  width = 160)
                      ),
               column(width = 4,
-                     numericInput("ZTLD", "End of LD section (hours):", 120,
-                                  min = 1, max = 250, width = 150),
-                     numericInput("det", "Detrend length (hours):", 48,
-                                  min = 1, max = 100, width = 150)
+                     numericInput("ZTLD", "End of LD section (s):", 120,
+                                  min = 1, 
+                                  max = 250, 
+                                  width = 160),
+                     numericInput("det", "Detrend length (s):", 48,
+                                  min = 1, 
+                                  max = 100, 
+                                  width = 160)
                      ),
               column(width = 4,
-                     numericInput("ZTDD", "End of DD section (hours):", 168,
-                                  min = 1, max = 250, width = 150),
-                     selectInput("section_raw", "Section:",
-                                 c("LD", "DD"))
+                     numericInput("ZTDD", "End of DD section (hs):", 168,
+                                  min = 1, 
+                                  max = 250, 
+                                  width = 160),
+                     selectInput("section_preprocessed", "Section:",
+                                 multiple = TRUE,
+                                 c("LD", "DD"),
+                                 selected = "DD")
                      ),
           ),
           plotOutput("detrendedPlot")
@@ -68,14 +89,16 @@ shinyUI(fluidPage(
         ),
         tabPanel("Periods",
                  fluidRow(
+                   h3("Methods for fitting:"),
                    column(width = 4,
                           selectInput("methodLD", "Methodfor LD:",
                                       c("Fourier" = "fourier",
                                         "Wavelet" = "wavelet",
                                         "LS" = "ls",
                                         "Mesa" = "mesa",
-                                        "24 hs" = "24hs",
+                                        "24 hs" = "twentyfour",
                                         "LS Graph" = "lsgraph"),
+                                      selected = "ls",
                                       width = 150)
                           ),
                    column(width = 4,
@@ -86,12 +109,37 @@ shinyUI(fluidPage(
                                         "Mesa" = "mesa",
                                         "24 hs" = "24hs",
                                         "LS Graph" = "lsgraph"),
+                                      selected = "ls",
                                       width = 150)
                           ),
                  ),
                  fluidRow(
+                   h3("Period fit parameters:"),
+                          ),
+                 fluidRow(
+                   column(width = 4,
+                          numericInput("min_period", "Minimum period (hs):", 20,
+                                       min = 1, 
+                                       max = 20, 
+                                       width = 150),
+                   ),
+                   column(width = 4,
+                          numericInput("max_period", "Maximum period (hs):", 28.5,
+                                       min = 20, 
+                                       max = 40, 
+                                       width = 150),
+                   ),
+                   column(width = 4,
+                          numericInput("oversampling", "Oversampling (for LS):", 30,
+                                       min = 1, 
+                                       max = 60, 
+                                       width = 150),
+                   ),
+                 ),
+                 plotOutput("periodsPlot"),
+                 fluidRow(
                    column(width = 12,
-                          dataTableOutput('table')
+                          dataTableOutput('table_periods')
                           )
                    )
                  ),

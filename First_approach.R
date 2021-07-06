@@ -91,3 +91,5 @@ periods %>% ggplot(aes(x = period,
            fill = section)) +
   geom_histogram() +
   theme_pubclean()
+
+# Cosinor

@@ -16,3 +16,13 @@ LS_period <- function(signal, time, from_freq, to_freq, oversampling_freq) {
                 pvalue = pvalue))
   
 }
+
+twentyfour_period <- function() {
+  
+  period <- 24
+  pvalue <- NA
+  
+  return(tibble(period = period, 
+                pvalue = pvalue))
+  
+}

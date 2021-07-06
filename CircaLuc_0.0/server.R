@@ -12,17 +12,39 @@ library(viridis)
 library(tidyverse)
 library(zoo)
 library(shinyjs)
-#library(forecast)
-#library(pracma)
-#library(DT)
+library(gghalves)
+library(systemfonts)
+library(scales)
 library(gsignal)
+library(here)
 
-# Define server logic required to draw a histogram
-shinyServer(function(input, output) {
+# Define server logic 
+shinyServer(function(session, input, output) {
   
-  # Set workign directory
-  setwd("~/Dropbox/Estadistica/CircaLuc")
+  # Setup ####
+  
+  ## ggplot2 theme
+  theme_set(
+    theme_minimal(
+      ## increase size of all text elements
+      base_size = 14, 
+      ## set custom font family for all text elements
+      base_family = "Helvetica")
+  )
+  
+  ## overwrite other defaults of theme_minimal()
+  theme_update(
+    ## remove major horizontal grid lines
+    panel.grid.major.x = element_blank(),
+    ## remove all minor grid lines
+    panel.grid.minor = element_blank(),
+  )
+  
+  # Set working directory
+  setwd(here())
   source("period_estim_funs.R")
+  
+  # Raw data ####
   
   # Get and reshape the data
   data.df <- reactive({
@@ -49,6 +71,54 @@ shinyServer(function(input, output) {
     )
   })
   
+  observe({
+    updateSelectInput(
+      session,
+      "well",
+      "Well(s):",
+      choices = list(
+        `All the wells` = "all",
+        `Mean` = "mean",
+        `Individual wells` = as.character(unique(data.df()$well))
+      ),
+      selected = "all"
+    )
+  })
+  
+  
+  output$rawPlot <- renderPlot({
+    
+    data.df.plot <- data.df() %>%
+      group_by(ZTTime) %>%
+      summarise(lumin = mean(lumin)) %>%
+      mutate(well = "mean") %>%
+      rbind(data.df() %>% select(well, ZTTime, lumin))
+    
+    plot.title <- "Raw luminosity"
+    
+    if (!("all" %in% input$well)) {
+      data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$well)
+    }
+    
+    data.df.plot %>%
+      ggplot(aes(x = ZTTime, y = lumin, colour = well)) +
+      geom_line() +
+      labs(x = "Time [hs]",
+           y = "Luminosity",
+           color = "Well",
+           title = plot.title) +
+      scale_colour_viridis(discrete = TRUE) +
+      scale_y_continuous(labels = scientific,
+                         trans = if_else(input$raw_y_scale == "linear", 
+                                         "identity",
+                                         input$raw_y_scale)) +
+      theme(legend.position = "bottom") 
+    
+  }, 
+  height = 600, 
+  width = 600 )
+  
+  # Processed data ####
   # Detrending and smoothing
   smoothed.df <- reactive({
     data.df() %>%
@@ -59,10 +129,10 @@ shinyServer(function(input, output) {
                            shape = "same"),
         lumin_weighted = lumin / Ys,
         section = ifelse(
-          ZTTime >= ZTcorte & ZTTime <= ZTLD,
+          ZTTime >= input$ZTcorte & ZTTime <= input$ZTLD,
           "LD",
-          ifelse(ZTTime > ZTLD &
-                   ZTTime <= ZTDD, "DD", "NonU")
+          ifelse(ZTTime > input$ZTLD &
+                   ZTTime <= input$ZTDD, "DD", "NonU")
         )
       ) %>%
       ungroup() %>%
@@ -77,6 +147,37 @@ shinyServer(function(input, output) {
       ungroup()
   })
   
+  output$detrendedPlot <- renderPlot({
+    
+    smoothed.df.plot <- smoothed.df() %>%
+      group_by(ZTTime, section) %>%
+      summarise(lumin_smoothed = mean(lumin_smoothed)) %>%
+      mutate(well = "mean") %>%
+      rbind(smoothed.df() %>% select(well, ZTTime, lumin_smoothed, section))
+    
+    plot.title <- "Preprocessed luminosity"
+    
+    if (!("all" %in% input$well)) {
+      smoothed.df.plot <- smoothed.df.plot %>% dplyr::filter(well %in% input$well)
+    }
+    
+    smoothed.df.plot %>%
+      dplyr::filter((section %in% input$section_preprocessed)) %>%
+      drop_na() %>%
+      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
+      geom_line() +
+      labs(x = "Time [hs]",
+           y = "Luminosity",
+           title = paste0(plot.title, " in ", as.character(input$section_raw))) +
+      scale_colour_viridis(discrete = TRUE) +
+      theme(legend.position = "bottom")
+    
+  }, 
+  height = 600, 
+  width = 600 )
+  
+  # Periods ####
+  
   periods.df <- reactive({
     switch(input$methodLD,
            ls = {
@@ -87,73 +188,65 @@ shinyServer(function(input, output) {
                  LS_period(
                    signal = lumin_smoothed,
                    time = ZTTime,
-                   from_freq = .035,
-                   to_freq = .05,
-                   oversampling_freq = 30
+                   from_freq = 1/input$max_period,
+                   to_freq = 1/input$min_period,
+                   oversampling_freq = input$oversampling
                  )
                )
-           }, {
-           tibble(data = input$method)
+           }, 
+           twentyfour = {
+             periods.df <- smoothed.df() %>%
+               dplyr::filter(section %in% c("LD", "DD")) %>%
+               group_by(well, section) %>%
+               summarise(
+                 twentyfour_period()
+               )
+           },
+           {
+             tibble(data = input$method)
            }
     )
   })
   
-  output$rawPlot <- renderPlot({
+  output$periodsPlot <- renderPlot({
     
-    if (input$well == "All") {
-      data.df.plot <- data.df()
-      plot.title <- "Raw luminosity of all the wells"
-    } else if (input$well == "Mean") {
-      data.df.plot <- data.df() %>%
-        group_by(ZTTime) %>%
-        summarise(lumin = mean(lumin)) %>%
-        mutate(well = "mean")
-      plot.title <- "Raw luminosity of the mean"
-    } else {
-      data.df.plot <- data.df() %>% dplyr::filter(well == input$well)
-      plot.title <- paste0("Raw luminosity of well ", input$well)
-    }
+    periods.df.plot <- periods.df()
     
-    data.df.plot %>%
-      ggplot(aes(x = ZTTime, y = lumin, colour = well)) +
-      geom_line() +
-      ggtitle(plot.title) +
-      scale_colour_viridis(discrete = TRUE) +
-      theme_classic() +
+    periods.df.plot %>%
+      ggplot(aes(x = section, y = period, colour = section, fill = section)) +
+      ggdist::stat_halfeye(
+        ## custom bandwidth
+        adjust = 1, 
+        width = .6, 
+        justification = -.2, 
+        .width = 0, 
+        alpha = 0.4,
+        point_colour = NA
+      ) + 
+      geom_boxplot(
+        width = .12, 
+        alpha = 0.4,
+        outlier.color = NA # Remove outliers
+      ) +
+      ## add dot plots from {ggdist} package
+      gghalves::geom_half_point(
+        side = "l", 
+        range_scale = .4,
+        alpha = .3
+      )  + 
+      coord_cartesian(xlim = c(1.2, NA)) +
+      labs(x = "Section",
+           y = "Period [hs]",
+           title = "Estimated periods") +
       theme(legend.position = "none")
     
   })
   
-  output$detrendedPlot <- renderPlot({
-    
-    if (input$well == "All") {
-      smoothed.df.plot <- smoothed.df()
-      plot.title <- "Smoothed luminosity of all the wells"
-    } else if (input$well == "Mean") {
-      smoothed.df.plot <- smoothed.df() %>%
-        group_by(ZTTime, section) %>%
-        summarise(lumin_smoothed = mean(lumin_smoothed)) %>%
-        mutate(well = "mean")
-      plot.title <- "Smoothed luminosity of the mean"
-    } else {
-      smoothed.df.plot <- smoothed.df() %>%
-        dplyr::filter(well == input$well)
-      plot.title <-
-        paste0("Smoothed luminosity of well ", input$well)
-    }
-    
-    smoothed.df.plot %>%
-      dplyr::filter((section == as.character(input$section_raw))) %>%
-      drop_na() %>%
-      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
-      geom_line() +
-      ggtitle(paste0(plot.title, " in ", as.character(input$section))) +
-      scale_colour_viridis(discrete = TRUE) +
-      theme_classic() +
-      theme(legend.position = "none")
-    
-  })
-  
+  output$table_periods <- renderDataTable(
+    periods.df()
+    )
+
+  # Cosinor ####
   output$cosinorPlot <- renderPlot({
     
     if (input$well == "All") {
@@ -179,14 +272,9 @@ shinyServer(function(input, output) {
       geom_line() +
       ggtitle(paste0(plot.title, " in ", as.character(input$section))) +
       scale_colour_viridis(discrete = TRUE) +
-      theme_classic() +
       theme(legend.position = "none")
     
   })
-  
-  output$table <- renderDataTable(
-    periods.df()
-    )
   
   # Download ####
   
