@@ -94,25 +94,38 @@ shinyServer(function(session, input, output) {
       mutate(well = "mean") %>%
       rbind(data.df() %>% select(well, ZTTime, lumin))
     
-    plot.title <- "Raw luminosity"
-    
     if (!("all" %in% input$well)) {
       data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$well)
     }
     
     data.df.plot %>%
       ggplot(aes(x = ZTTime, y = lumin, colour = well)) +
-      geom_line() +
+      geom_line(size = 1) +
+      annotate("rect", 
+               xmin = seq(input$ZTcorte + 12,input$ZTLD-1,24), 
+               xmax = seq(input$ZTcorte + 24,input$ZTLD,24), 
+               ymin = min(input$lumin_smoothed), 
+               ymax = max(input$lumin_smoothed),
+               alpha = .2) +
+      annotate("rect",
+               xmin = input$ZTLD, 
+               xmax = input$ZTDD, 
+               ymin = min(input$lumin_smoothed), 
+               ymax = max(input$lumin_smoothed),
+               alpha = .2) +
+      geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
+                 linetype = "dashed",
+                 size = 1) +
       labs(x = "Time [hs]",
-           y = "Luminosity",
+           y = "Luminescence (RLU/min)",
            color = "Well",
-           title = plot.title) +
+           title = "Luminescence") +
       scale_colour_viridis(discrete = TRUE) +
       scale_y_continuous(labels = scientific,
                          trans = if_else(input$raw_y_scale == "linear", 
                                          "identity",
                                          input$raw_y_scale)) +
-      theme(legend.position = "bottom") 
+      theme(legend.position = "none") 
     
   }, 
   height = 600, 
@@ -138,7 +151,7 @@ shinyServer(function(session, input, output) {
       ungroup() %>%
       group_by(well, section) %>%
       mutate(
-        lumin_detrended = detrend(lumin_weighted, "linear")[, 1],
+        lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
         lumin_smoothed = gsignal::conv(lumin_detrended,
                                        rep(1, 60 * input$smo / input$sp),
                                        shape = "same")
@@ -155,7 +168,6 @@ shinyServer(function(session, input, output) {
       mutate(well = "mean") %>%
       rbind(smoothed.df() %>% select(well, ZTTime, lumin_smoothed, section))
     
-    plot.title <- "Preprocessed luminosity"
     
     if (!("all" %in% input$well)) {
       smoothed.df.plot <- smoothed.df.plot %>% dplyr::filter(well %in% input$well)
@@ -164,16 +176,33 @@ shinyServer(function(session, input, output) {
     smoothed.df.plot %>%
       dplyr::filter((section %in% input$section_preprocessed)) %>%
       drop_na() %>%
-      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
-      geom_line() +
+      ggplot(aes(x = ZTTime-input$ZTcorte, y = lumin_smoothed, colour = well)) +
+      geom_line(size = 1) +
+      annotate("rect", 
+               xmin = seq(12,input$ZTLD-input$ZTcorte-1,24), 
+               xmax = seq(24,input$ZTLD-input$ZTcorte,24), 
+               ymin = min(input$lumin_smoothed), 
+               ymax = max(input$lumin_smoothed),
+               alpha = .2) +
+      annotate("rect",
+               xmin = input$ZTLD-input$ZTcorte, 
+               xmax = input$ZTDD-input$ZTcorte, 
+               ymin = min(input$lumin_smoothed), 
+               ymax = max(input$lumin_smoothed),
+               alpha = .2) +
+      geom_vline(xintercept = input$ZTLD-input$ZTcorte,
+                 linetype = "dashed",
+                 size = 1) +
       labs(x = "Time [hs]",
-           y = "Luminosity",
-           title = paste0(plot.title, " in ", as.character(input$section_raw))) +
+           y = "Detrended luminescence",
+           title = "Detrended luminescence") +
       scale_colour_viridis(discrete = TRUE) +
-      theme(legend.position = "bottom")
+      scale_x_continuous(breaks = seq(0,input$ZTDD-input$ZTcorte,12),
+                         limits = c(0, input$ZTDD-input$ZTcorte)) +
+      theme(legend.position = "none")
     
   }, 
-  height = 600, 
+  height = 400, 
   width = 600 )
   
   # Periods ####
@@ -247,32 +276,72 @@ shinyServer(function(session, input, output) {
     )
 
   # Cosinor ####
+  cosinor.df <- reactive({
+    smoothed.df() %>% 
+      dplyr::filter(section %in% c("LD", "DD")) %>% 
+      group_by(well, section) %>% 
+      nest() %>% 
+      left_join(periods.df(), by = c("well", "section")) %>%
+      mutate(
+        fit = map(data, ~nls(lumin_smoothed ~ alpha + amp * cos(2*pi*ZTTime/period - acro),
+                             data = .x,
+                             start = list(alpha = 0, amp = 1, acro = 1))),
+        tidied = map(fit, broom::tidy),
+        R = map2(fit, data, modelr::rsquare)
+      ) %>% 
+      unnest(tidied)  %>% 
+      unnest(R) %>%
+      dplyr::filter(term != "alpha") %>%
+      select(all_of(c("well", "section", "period", "term", "estimate", "R"))) %>%
+      pivot_wider(names_from = "term",
+                  values_from = "estimate") 
+  })
+  
+  output$table_cosinor <- renderDataTable(
+    cosinor.df() %>%
+      dplyr::filter((section %in% input$section_cosinor))
+  )
+  
   output$cosinorPlot <- renderPlot({
     
-    if (input$well == "All") {
-      smoothed.df.plot <- smoothed.df()
-      plot.title <- "Smoothed luminosity of all the wells"
-    } else if (input$well == "Mean") {
-      smoothed.df.plot <- smoothed.df() %>%
-        group_by(ZTTime, section) %>%
-        summarise(lumin_smoothed = mean(lumin_smoothed)) %>%
-        mutate(well = "mean")
-      plot.title <- "Smoothed luminosity of the mean"
-    } else {
-      smoothed.df.plot <- smoothed.df() %>%
-        dplyr::filter(well == input$well)
-      plot.title <-
-        paste0("Smoothed luminosity of well ", input$well)
-    }
+    cosinor.df.plot <- cosinor.df()
     
-    smoothed.df.plot %>%
-      dplyr::filter((section == as.character(input$section_cosinor))) %>%
-      drop_na() %>%
-      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
-      geom_line() +
-      ggtitle(paste0(plot.title, " in ", as.character(input$section))) +
-      scale_colour_viridis(discrete = TRUE) +
+    cosinor.df.plot %>%
+      ggplot(aes(x = section, y = acro, colour = section, fill = section)) +
+      ggdist::stat_halfeye(
+        ## custom bandwidth
+        adjust = 1, 
+        width = .6, 
+        justification = -.2, 
+        .width = 0, 
+        alpha = 0.4,
+        point_colour = NA
+      ) + 
+      geom_boxplot(
+        width = .12, 
+        alpha = 0.4,
+        outlier.color = NA # Remove outliers
+      ) +
+      ## add dot plots from {ggdist} package
+      gghalves::geom_half_point(
+        side = "l", 
+        range_scale = .4,
+        alpha = .3
+      )  + 
+      coord_cartesian(xlim = c(1.2, NA)) +
+      scale_y_continuous(limits = c(0, 3)) +
+      labs(x = "Section",
+           y = "Acrophase [hs]",
+           title = "Estimated acrophases") +
       theme(legend.position = "none")
+    
+    # cosinor.df() %>%
+    #   ggplot(aes(x = section, y = acro, colour = well)) +
+    #   geom_jitter() +
+    #   #ggtitle(paste0(plot.title, " in ", as.character(input$section))) +
+    #   scale_colour_viridis(discrete = TRUE) +
+    #   scale_y_continuous(limits = c(0, 5)) +
+    #   theme(legend.position = "none")
     
   })
   
