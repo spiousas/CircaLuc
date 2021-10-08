@@ -13,13 +13,12 @@ library(tidyverse)
 library(shinyjs)
 library(emo)
 
-# Define UI for application that draws a histogram
 shinyUI(fluidPage(
   useShinyjs(),
-  # Application title
+  # Application title ####
   titlePanel(paste0("CircaLuc v0.1 ", emo::ji("clock"))),
   
-  # Sidebar with a slider input for number of bins
+  # Sidebar ####
   sidebarLayout(
     sidebarPanel(
       fileInput("input_file",
@@ -33,10 +32,11 @@ shinyUI(fluidPage(
       numericInput("sp", "Sampling period (mins):", 30, 
                    min = 1, max = 100, width = 180 ),
       downloadButton("downloadData", "Download processed data"),
-      downloadButton("downloadPeriods", "Download periods")
+      downloadButton("downloadPeriods", "Download periods"),
+      downloadButton("downloadParameters", "Download parameters")
     ),
     
-    # Show a plot of the generated distribution
+    # Show a plot of raw data
     mainPanel(
       tabsetPanel(
         type = "tabs",
@@ -45,13 +45,15 @@ shinyUI(fluidPage(
           "RAW data",
           fluidPage(
             fluidRow(
+              column(width = 6,
               selectInput("raw_y_scale", "Luminosity scale:",
                           c("linear", "log2", "log10")),
               plotOutput("rawPlot"))
+            )
           )
         ),
+        # Processed data ####
         tabPanel(
-          # Processed data ####
           "Processed data",
           fluidPage(
             fluidRow(
@@ -61,7 +63,7 @@ shinyUI(fluidPage(
                                   min = 1, 
                                   max = 125, 
                                   width = 160),
-                     numericInput("smo","Smoothing width (s):", 10,
+                     numericInput("smo","Smoothing width (s):", 12,
                                   min = 1, 
                                   max = 100, 
                                   width = 160)
@@ -84,7 +86,7 @@ shinyUI(fluidPage(
                      selectInput("section_preprocessed", "Section:",
                                  multiple = TRUE,
                                  c("LD", "DD"),
-                                 selected = "LD")
+                                 selected = c("LD", "DD"))
                      )
           ),
           plotOutput("detrendedPlot")
@@ -99,7 +101,7 @@ shinyUI(fluidPage(
                                       c("Fourier" = "fourier",
                                         "LS" = "ls",
                                         "24 hs" = "twentyfour"),
-                                      selected = "ls",
+                                      selected = "twentyfour",
                                       width = 150)
                           ),
                    column(width = 4,
@@ -146,9 +148,19 @@ shinyUI(fluidPage(
             column(width = 4,
                    selectInput("section_cosinor", 
                                multiple = TRUE,
-                               "Section:", 
+                               "Section to plot:", 
                                c("LD", "DD"),
-                               selected = "LD")
+                               selected = c("LD", "DD"))
+            ),
+            column(width = 8,
+                   sliderInput("Rpass", "Threshold R:",
+                               min = 0, max = 1,
+                               value = 0.5),
+            )
+          ),
+          fluidRow(
+            column(width = 12,
+                   plotOutput("cosinorPlot")
             )
           ),
           fluidRow(
@@ -158,19 +170,41 @@ shinyUI(fluidPage(
           )
         ),
         # Figures ####
-        tabPanel( "Figures",
+        tabPanel("Figures",
+                 fluidRow(
+                   column(width = 6,
+                          selectInput("filter_figures", 
+                                      multiple = FALSE,
+                                      "What to plot:", 
+                                      c("All the wells" = "all",
+                                        "Only the synchronized in LD" = "only_synch"),
+                                      selected = c("All the wells"))
+                   )
+                 ),
+           fluidRow(
+             h2("Cosinor fit results"),
+             column(width = 4,
+                    plotOutput("periodsPlot")
+             ),
+             column(width = 4,
+                    plotOutput("ampsPlot")
+             ),
+             column(width = 4,
+                    plotOutput("acrosPlot")
+             )
+           ),
           fluidRow(
-            column(width = 12,
-                   plotOutput("cosinorPlot")
+            h2("Polar plots of acrophase"),
+            column(width = 4,
+                          plotOutput("acrospolarPlot")
             ),
-            fluidRow(
-              column(width = 12,
-                     plotOutput("periodsPlot")
-              )
+            column(width = 8,
+                   dataTableOutput('table_rayleigh')
+            )
           )
           )
         )
       )
     )
   )
-))
+)
