@@ -6,10 +6,9 @@
 #
 #    http://shiny.rstudio.com/
 #
-# 
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, systemfonts, scales, gsignal, 
-               here, circular)
+               here, circular, gghalves)
 pacman::p_load_gh("emo")
 
 shinyUI(fluidPage(

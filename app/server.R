@@ -303,7 +303,7 @@ shinyServer(function(session, input, output) {
   circ.means <- reactive({
     
     if (input$filter_figures == "only_synch") {
-      cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(synchronized == "yes!")  
+      cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(synch == "yes!")  
     } else {
       cosinor.df_circmeans <- cosinor.df()
     }
@@ -504,8 +504,9 @@ shinyServer(function(session, input, output) {
     cosinor.df.plot() %>% ggplot(aes(x = acro_24,
                                    y = 1,
                                    color = section)) +
-      geom_hline(yintercept = .5, color = "grey90") +
-      geom_hline(yintercept = 1, color = "grey90") +
+      geom_vline(xintercept = c(0, 6, 12, 18), color = "grey60") +
+      geom_hline(yintercept = .5, color = "grey60") +
+      geom_hline(yintercept = 1, color = "grey60") +
       geom_point(size = 3, alpha = .5) +
       geom_segment(
         data = circ.means(),
