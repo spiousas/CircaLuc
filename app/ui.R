@@ -7,7 +7,7 @@
 #    http://shiny.rstudio.com/
 #
 
-pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, systemfonts, scales, gsignal, 
+pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves)
 pacman::p_load_gh("emo")
 
@@ -31,7 +31,8 @@ shinyUI(fluidPage(
                    min = 1, max = 100, width = 180 ),
       downloadButton("downloadData", "Download processed data"),
       downloadButton("downloadPeriods", "Download periods"),
-      downloadButton("downloadParameters", "Download parameters")
+      downloadButton("downloadCosinor", "Download cosinor data"),
+      downloadButton("downloadCircular", "Download circular data"),
     ),
     
     # Show a plot of raw data
@@ -165,6 +166,7 @@ shinyUI(fluidPage(
             )
           ),
           fluidRow(
+            h3("Cosinor data"),
             column(width = 12,
                    dataTableOutput('table_cosinor')
             )
@@ -202,9 +204,12 @@ shinyUI(fluidPage(
            ),
           fluidRow(
             h2("Polar plots of acrophase"),
-            column(width = 5,
-                          plotOutput("acrospolarPlot")
-            ),
+            column(width = 6,
+                   plotOutput("acrospolarPlot")
+            )
+          ),
+          fluidRow(
+            h3("Circular data"),
             column(width = 7,
                    dataTableOutput('table_rayleigh')
             )

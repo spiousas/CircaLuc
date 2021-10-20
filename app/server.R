@@ -19,7 +19,7 @@ shinyServer(function(session, input, output) {
       ## increase size of all text elements
       base_size = 14, 
       ## set custom font family for all text elements
-      base_family = "Helvetica")
+      base_family = "Arial")
   )
   
   ## overwrite other defaults of theme_minimal()
@@ -94,14 +94,14 @@ shinyServer(function(session, input, output) {
                xmax = seq(input$ZTcorte + 24,input$ZTLD,24), 
                ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
-               color = "yellow", fill = "yellow",
+               fill = "grey40",
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
                ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
-               color = "yellow", fill = "yellow",
+               fill = "grey40",
                alpha = .2) +
       geom_line(size = 1) +
       geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
@@ -174,14 +174,14 @@ shinyServer(function(session, input, output) {
                xmax = seq(24,input$ZTLD-input$ZTcorte,24), 
                ymin = min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
                ymax = max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
-               color = "yellow", fill = "yellow",
+               fill = "grey40",
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD-input$ZTcorte, 
                xmax = input$ZTDD-input$ZTcorte, 
                ymin = min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
                ymax = max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
-               color = "yellow", fill = "yellow",
+               fill = "grey40",
                alpha = .2) +
       geom_line(size = 1) +  
       geom_vline(xintercept = input$ZTLD-input$ZTcorte,
@@ -287,14 +287,15 @@ shinyServer(function(session, input, output) {
         acro = if_else(acro<0, 2*pi-acro, acro),
         acro = if_else(abs(acro)>2*pi, acro%%(2*pi), acro),
         amp = if_else(amp<0, -amp, amp),
-        acro_24 = acro*12/pi,
-        synch = if_else(R>input$Rpass, "yes!", "no"),
+        acro_24 = acro*12/pi
       ) %>%
       group_by(well) %>%
-      mutate(rhythm = if_else((R[section=="LD"]>input$Rpass) & (R[section=="DD"]>input$Rpass), 
+      mutate(synch =  if_else(R[section=="LD"]>input$Rpass, 
+                              "yes!", "no"),
+             rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$Rpass), 
                               "yes!", "no"),
              entr = if_else((rhythm=="yes!") & (between(acro_24[section=="DD"]-acro_24[section=="LD"], input$phasepass[1], input$phasepass[2])), 
-                                                "yes!", "no")
+                                                "yes!", "no") # OJO ACA QUE HAY ALGO PARA DISCUTIR
       ) %>%
       ungroup()
   })
@@ -315,13 +316,14 @@ shinyServer(function(session, input, output) {
                                              units = "hours", 
                                              template = "clock24", 
                                              modulo = "2pi")),
+             mean_period = map(data, ~mean(.x$period)),
+             sd_period = map(data, ~sd(.x$period)),
              mean_acro_24 = map(circ_acro, ~mean(.x)),
              sd_acro_24 = map(circ_acro, ~sd(.x)),
              rayleigh = map(circ_acro, ~rayleigh.test(.x)),
              p.value = rayleigh[[1]]$p.value) %>%
       select(-c(data, circ_acro, rayleigh)) %>%
-      unnest(mean_acro_24) %>%
-      unnest(sd_acro_24) %>%
+      unnest(c(mean_period, sd_period, mean_acro_24, sd_acro_24)) %>%
       mutate(r = exp(-sd_acro_24^2/2))
   })
 
@@ -337,7 +339,7 @@ shinyServer(function(session, input, output) {
       mutate(ZTTime_fit = if_else(section == "LD", 
                                   ZTTime - input$ZTcorte,
                                   ZTTime - input$ZTLD)) %>%
-      left_join(cosinor.df() %>% select(-c(R, acro_24, synchr)),
+      left_join(cosinor.df() %>% select(-c(R, acro_24, synch)),
                 by = c("well", "section")) %>%
       mutate(lumin_predicted = alpha + amp * cos(2*pi*ZTTime_fit/period - acro)) %>%
       select(-c(period, alpha, amp, acro, ZTTime_fit))
@@ -357,14 +359,14 @@ shinyServer(function(session, input, output) {
                  xmax = seq(24,input$ZTLD-input$ZTcorte,24),
                  ymin = min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
                  ymax = max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
-                 color = "yellow", fill = "yellow",
+                 fill = "gray40",
                  alpha = .2) +
         annotate("rect",
                  xmin = input$ZTLD-input$ZTcorte, 
                  xmax = input$ZTDD-input$ZTcorte, 
                  ymin = min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
                  ymax = max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
-                 color = "yellow", fill = "yellow",
+                 fill = "gray40",
                  alpha = .2) +
         geom_line(aes(y = lumin_predicted), size = 1, color = "grey50") +
         geom_line(aes(y = lumin_smoothed), size = 1) +
@@ -379,7 +381,9 @@ shinyServer(function(session, input, output) {
                            limits = c(0, input$ZTDD-input$ZTcorte)) +
         theme(legend.position = "none")
     } else {
-      ggplot()
+      ggplot() +
+        labs(title = "Please select only one well to plot") +
+        theme(plot.title = element_text(size = 20, color = "red", hjust = 0.5))
     }
   }, 
   height = 400, 
@@ -545,11 +549,13 @@ shinyServer(function(session, input, output) {
     if (is.null(input$input_file)) {
       shinyjs::disable("downloadData")
       shinyjs::disable("downloadPeriods")
-      shinyjs::disable("downloadParameters")
+      shinyjs::disable("downloadCosinor")
+      shinyjs::disable("downloadCircular")
     } else {
       shinyjs::enable("downloadData")
       shinyjs::enable("downloadPeriods")
-      shinyjs::enable("downloadParameters")
+      shinyjs::enable("downloadCosinor")
+      shinyjs::enable("downloadCircular")
     }
   })
   
@@ -566,9 +572,21 @@ shinyServer(function(session, input, output) {
   )
   
   # Downloadable csv of parameters dataset
-  output$downloadParameters <- downloadHandler(
+  output$downloadCosinor <- downloadHandler(
     filename = function() {
-      "parameters.csv"
+      "cosinor.csv"
+    },
+    content = function(file) {
+      write.csv(cosinor.df(), 
+                file, 
+                row.names = FALSE)
+    }
+  )
+  
+  # Downloadable csv of parameters dataset
+  output$downloadCircular <- downloadHandler(
+    filename = function() {
+      "circular.csv"
     },
     content = function(file) {
       write.csv(cosinor.df(), 
