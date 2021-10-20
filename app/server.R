@@ -7,8 +7,6 @@
 #    http://shiny.rstudio.com/
 #
 
-pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, systemfonts, scales, gsignal, 
-               here, circular)
 
 # Define server logic 
 shinyServer(function(session, input, output) {
@@ -33,8 +31,7 @@ shinyServer(function(session, input, output) {
   )
   
   # Set working directory
-  setwd(here())
-  source("period_estim_funs.R")
+  source(here("period_estim_funs.R"))
   
   # Raw data ####
   
@@ -285,14 +282,19 @@ shinyServer(function(session, input, output) {
       pivot_wider(names_from = "term",
                   values_from = "estimate") %>%
       ungroup() %>%
-      group_by(well) %>%
       mutate(
         acro = if_else(amp<0, pi+acro, acro),
         acro = if_else(acro<0, 2*pi-acro, acro),
         acro = if_else(abs(acro)>2*pi, acro%%(2*pi), acro),
         amp = if_else(amp<0, -amp, amp),
         acro_24 = acro*12/pi,
-        Rpass = if_else(R[section=="LD"]>input$Rpass, "yes!", "no")
+        synch = if_else(R>input$Rpass, "yes!", "no"),
+      ) %>%
+      group_by(well) %>%
+      mutate(rhythm = if_else((R[section=="LD"]>input$Rpass) & (R[section=="DD"]>input$Rpass), 
+                              "yes!", "no"),
+             entr = if_else((rhythm=="yes!") & (between(acro_24[section=="DD"]-acro_24[section=="LD"], input$phasepass[1], input$phasepass[2])), 
+                                                "yes!", "no")
       ) %>%
       ungroup()
   })
@@ -301,7 +303,7 @@ shinyServer(function(session, input, output) {
   circ.means <- reactive({
     
     if (input$filter_figures == "only_synch") {
-      cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(Rpass == "yes!")  
+      cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(synchronized == "yes!")  
     } else {
       cosinor.df_circmeans <- cosinor.df()
     }
@@ -319,7 +321,8 @@ shinyServer(function(session, input, output) {
              p.value = rayleigh[[1]]$p.value) %>%
       select(-c(data, circ_acro, rayleigh)) %>%
       unnest(mean_acro_24) %>%
-      unnest(sd_acro_24)
+      unnest(sd_acro_24) %>%
+      mutate(r = exp(-sd_acro_24^2/2))
   })
 
   ## Cosinor table ####
@@ -334,7 +337,7 @@ shinyServer(function(session, input, output) {
       mutate(ZTTime_fit = if_else(section == "LD", 
                                   ZTTime - input$ZTcorte,
                                   ZTTime - input$ZTLD)) %>%
-      left_join(cosinor.df() %>% select(-c(R, acro_24, Rpass)),
+      left_join(cosinor.df() %>% select(-c(R, acro_24, synchr)),
                 by = c("well", "section")) %>%
       mutate(lumin_predicted = alpha + amp * cos(2*pi*ZTTime_fit/period - acro)) %>%
       select(-c(period, alpha, amp, acro, ZTTime_fit))
@@ -386,7 +389,7 @@ shinyServer(function(session, input, output) {
   
   cosinor.df.plot <- reactive({
     if (input$filter_figures == "only_synch") {
-      cosinor.df() %>% dplyr::filter(Rpass == "yes!")  
+      cosinor.df() %>% dplyr::filter(synch == "yes!")  
     } else {
       cosinor.df()
     }
@@ -394,13 +397,11 @@ shinyServer(function(session, input, output) {
   
   circ.means.plot <- reactive({
     if (input$filter_figures == "only_synch") {
-      circ.means() %>% dplyr::filter(Rpass == "yes!")  
+      circ.means() %>% dplyr::filter(synch == "yes!")  
     } else {
       circ.means()
     }
   })
-  
-  ## Period ####
   
   ## Period ####
   output$periodsPlot <- renderPlot({
@@ -503,13 +504,14 @@ shinyServer(function(session, input, output) {
     cosinor.df.plot() %>% ggplot(aes(x = acro_24,
                                    y = 1,
                                    color = section)) +
+      geom_hline(yintercept = .5, color = "grey90") +
       geom_hline(yintercept = 1, color = "grey90") +
       geom_point(size = 3, alpha = .5) +
       geom_segment(
         data = circ.means(),
         aes(x = mean_acro_24, 
             xend = mean_acro_24,
-            yend = .9*exp(-sd_acro_24^2/2)),
+            yend = .9*r),
         y = 0,
         size = 1,
         arrow = arrow(length = unit(0.05, "npc"))
@@ -525,10 +527,11 @@ shinyServer(function(session, input, output) {
       theme_void() +
       coord_polar() +
       scale_colour_manual(values = c("#7373FF", "#FF7272")) +
-      theme(legend.position = "top")
+      theme(legend.position = "top",
+            axis.text.x = element_text(size = 12))
   }, 
   height = 300, 
-  width = 200 )
+  width = 300 )
   
   ## Rayleigh table ####
   output$table_rayleigh <- renderDataTable(

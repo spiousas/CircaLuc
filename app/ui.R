@@ -6,12 +6,11 @@
 #
 #    http://shiny.rstudio.com/
 #
+# 
 
-library(shiny)
-library(viridis)
-library(tidyverse)
-library(shinyjs)
-library(emo)
+pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, systemfonts, scales, gsignal, 
+               here, circular)
+pacman::p_load_gh("emo")
 
 shinyUI(fluidPage(
   useShinyjs(),
@@ -153,9 +152,12 @@ shinyUI(fluidPage(
                                selected = c("LD", "DD"))
             ),
             column(width = 8,
-                   sliderInput("Rpass", "Threshold R:",
+                   sliderInput("Rpass", HTML("Threshold R (R<sub>tr</sub>):"),
                                min = 0, max = 1,
                                value = 0.5),
+                   sliderInput("phasepass", HTML("Threshold phase difference (phase<sub>tr</sub>):"),
+                                                 min = -12, max = 12, post = " hs",
+                                                 value = c(-4,4))
             )
           ),
           fluidRow(
@@ -177,10 +179,16 @@ shinyUI(fluidPage(
                                       multiple = FALSE,
                                       "What to plot:", 
                                       c("All the wells" = "all",
-                                        "Only the synchronized in LD" = "only_synch"),
+                                        "Only synchronized" = "only_synch",
+                                        "Only rhythmic" = "only_rhythm",
+                                        "Only entrained" = "only_entrained"),
                                       selected = c("All the wells"))
                    )
                  ),
+           fluidRow(HTML(paste("<b>Synchronized</b>: R>R<sub>tr</sub> in LD.", 
+                               "<b>Rhythmic</b>: R>R<sub>tr</sub> in LD and R>R<sub>tr</sub> in DD.", 
+                               "<b>Entrained</b>: R>R<sub>tr</sub> in LD and phase difference of +/- phase<sub>tr</sub> hs", 
+                               sep="<br/>"))),
            fluidRow(
              h2("Cosinor fit results"),
              column(width = 4,
@@ -195,10 +203,10 @@ shinyUI(fluidPage(
            ),
           fluidRow(
             h2("Polar plots of acrophase"),
-            column(width = 4,
+            column(width = 5,
                           plotOutput("acrospolarPlot")
             ),
-            column(width = 8,
+            column(width = 7,
                    dataTableOutput('table_rayleigh')
             )
           )
