@@ -41,12 +41,13 @@ shinyServer(function(session, input, output) {
     ext <- tools::file_ext(file$datapath)
     
     req(file)
-    validate(need(ext == "csv", "Please upload a csv file"))
+    validate(need(ext == c("csv", "tsv"), "Please upload a csv file"))
     
-    read_csv(file$datapath) %>%
+    read_delim(file$datapath, delim = input$sep) %>%
     pivot_longer(!ZTTime,
                  names_to = "well",
                  values_to = "lumin") %>%
+    mutate(well = str_trim(well)) %>%
     group_by(well) %>%
     summarise(ZTTime = ZTTime[1:length(na.trim(lumin))],
               lumin = na.trim(lumin)) %>% # Clean trailing NAs in Lumin
@@ -294,8 +295,8 @@ shinyServer(function(session, input, output) {
                               "yes!", "no"),
              rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$Rpass), 
                               "yes!", "no"),
-             entr = if_else((rhythm=="yes!") & (between(acro_24[section=="DD"]-acro_24[section=="LD"], input$phasepass[1], input$phasepass[2])), 
-                                                "yes!", "no") # OJO ACA QUE HAY ALGO PARA DISCUTIR
+             entr = if_else((rhythm=="yes!") & (abs(acro_24[section=="DD"]-acro_24[section=="LD"] < input$phasepass[1])), 
+                                                "yes!", "no") 
       ) %>%
       ungroup()
   })

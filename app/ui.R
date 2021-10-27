@@ -19,9 +19,13 @@ shinyUI(fluidPage(
   # Sidebar ####
   sidebarLayout(
     sidebarPanel(
+      radioButtons('sep', 'Separator for the file',
+                   c("Comma (,)" = ',', "Semicolon (;)" = ';',
+                     "Tab ( )" = '\t', "Pipe (|)" = '|'),
+                   ','),
       fileInput("input_file",
-                "Choose input data (.csv)",
-                accept = ".csv"),
+                "Choose input data (.csv or .tsv)",
+                accept = c(".csv", ".tsv")),
       selectInput("well", "Well(s):", 
                   multiple = TRUE,
                   choices = "",
@@ -156,8 +160,8 @@ shinyUI(fluidPage(
                                min = 0, max = 1,
                                value = 0.5),
                    sliderInput("phasepass", HTML("Threshold phase difference (phase<sub>tr</sub>):"),
-                                                 min = -12, max = 12, post = " hs",
-                                                 value = c(-4,4))
+                                                 min = 0, max = 12, post = " hs",
+                                                 value = 4.0)
             )
           ),
           fluidRow(
