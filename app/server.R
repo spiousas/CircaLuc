@@ -169,31 +169,34 @@ shinyServer(function(session, input, output) {
     smoothed.df.plot %>%
       dplyr::filter((section %in% input$section_preprocessed)) %>%
       drop_na() %>%
-      ggplot(aes(x = ZTTime-input$ZTcorte, y = lumin_smoothed, colour = well)) +
+      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
       annotate("rect", 
-               xmin = seq(12,input$ZTLD-input$ZTcorte-1,24), 
-               xmax = seq(24,input$ZTLD-input$ZTcorte,24), 
+               xmin = seq(12,input$ZTLD-1,24), 
+               xmax = seq(24,input$ZTLD,24), 
                ymin = min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
                ymax = max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
                fill = "grey40",
                alpha = .2) +
       annotate("rect",
-               xmin = input$ZTLD-input$ZTcorte, 
-               xmax = input$ZTDD-input$ZTcorte, 
+               xmin = input$ZTLD, 
+               xmax = input$ZTDD, 
                ymin = min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
                ymax = max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
                fill = "grey40",
                alpha = .2) +
       geom_line(size = 1) +  
-      geom_vline(xintercept = input$ZTLD-input$ZTcorte,
+      geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
                  size = 1) +
+      geom_vline(xintercept = seq(input$ZTcorte+12, input$ZTDD, 12),
+                 size = .5, 
+                 color = "gray70") +
       labs(x = "Time [hs]",
            y = "Detrended luminescence",
            title = "Detrended luminescence") +
       scale_colour_viridis(discrete = TRUE) +
-      scale_x_continuous(breaks = seq(0,input$ZTDD-input$ZTcorte,12),
-                         limits = c(0, input$ZTDD-input$ZTcorte)) +
+      scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
+                         limits = c(input$ZTcorte, input$ZTDD)) +
       theme(legend.position = "none")
     
   }, 
@@ -291,11 +294,11 @@ shinyServer(function(session, input, output) {
         acro_24 = acro*12/pi
       ) %>%
       group_by(well) %>%
-      mutate(synch =  if_else(R[section=="LD"]>input$Rpass, 
+      mutate(synch =  if_else(R[section=="LD"]>input$RpassLD, 
                               "yes!", "no"),
-             rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$Rpass), 
+             rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$RpassDD), 
                               "yes!", "no"),
-             entr = if_else((rhythm=="yes!") & (abs(acro_24[section=="DD"]-acro_24[section=="LD"] < input$phasepass[1])), 
+             entrained = if_else((rhythm=="yes!") & (abs(acro_24[section=="DD"]-acro_24[section=="LD"]) < input$phasepass), 
                                                 "yes!", "no") 
       ) %>%
       ungroup()
@@ -306,6 +309,10 @@ shinyServer(function(session, input, output) {
     
     if (input$filter_figures == "only_synch") {
       cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(synch == "yes!")  
+    } else if (input$filter_figures == "only_rhythm") {
+      cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(rhythm == "yes!")  
+    } else if (input$filter_figures == "only_entrained") {
+      cosinor.df_circmeans <- cosinor.df() %>% dplyr::filter(entrained == "yes!")  
     } else {
       cosinor.df_circmeans <- cosinor.df()
     }
@@ -354,32 +361,35 @@ shinyServer(function(session, input, output) {
       dplyr::filter(well %in% input$well) %>%
       dplyr::filter(section %in% input$section_cosinor) %>%
       drop_na() %>%
-      ggplot(aes(x = ZTTime-input$ZTcorte, color = section)) +
+      ggplot(aes(x = ZTTime, color = section)) +
         annotate("rect",
-                 xmin = seq(12,input$ZTLD-input$ZTcorte-1,24),
-                 xmax = seq(24,input$ZTLD-input$ZTcorte,24),
+                 xmin = seq(12,input$ZTLD-1,24),
+                 xmax = seq(24,input$ZTLD,24),
                  ymin = min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
                  ymax = max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
                  fill = "gray40",
                  alpha = .2) +
         annotate("rect",
-                 xmin = input$ZTLD-input$ZTcorte, 
-                 xmax = input$ZTDD-input$ZTcorte, 
+                 xmin = input$ZTLD, 
+                 xmax = input$ZTDD, 
                  ymin = min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
                  ymax = max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
                  fill = "gray40",
                  alpha = .2) +
         geom_line(aes(y = lumin_predicted), size = 1, color = "grey50") +
         geom_line(aes(y = lumin_smoothed), size = 1) +
-        geom_vline(xintercept = input$ZTLD-input$ZTcorte,
+        geom_vline(xintercept = input$ZTLD,
                    linetype = "dashed",
                    size = 1) +
+        geom_vline(xintercept = seq(input$ZTcorte+12, input$ZTDD, 12),
+                   size = .5,
+                   color = "gray70") +
         labs(x = "Time [hs]",
              y = "Detrended luminescence",
              title = "Cosinor fit") +
         scale_colour_manual(values = c("#7373FF", "#FF7272")) +
-        scale_x_continuous(breaks = seq(0,input$ZTDD-input$ZTcorte,12),
-                           limits = c(0, input$ZTDD-input$ZTcorte)) +
+        scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
+                           limits = c(input$ZTcorte, input$ZTDD)) +
         theme(legend.position = "none")
     } else {
       ggplot() +
@@ -395,6 +405,10 @@ shinyServer(function(session, input, output) {
   cosinor.df.plot <- reactive({
     if (input$filter_figures == "only_synch") {
       cosinor.df() %>% dplyr::filter(synch == "yes!")  
+    } else if (input$filter_figures == "only_rhythm") {
+        cosinor.df() %>% dplyr::filter(rhythm == "yes!")  
+    } else if (input$filter_figures == "only_entrained") {
+      cosinor.df() %>% dplyr::filter(entrained == "yes!")  
     } else {
       cosinor.df()
     }
@@ -402,7 +416,11 @@ shinyServer(function(session, input, output) {
   
   circ.means.plot <- reactive({
     if (input$filter_figures == "only_synch") {
-      circ.means() %>% dplyr::filter(synch == "yes!")  
+      cosinor.df() %>% dplyr::filter(synch == "yes!")  
+    } else if (input$filter_figures == "only_rhythm") {
+      cosinor.df() %>% dplyr::filter(rhythm == "yes!")  
+    } else if (input$filter_figures == "only_entrained") {
+      cosinor.df() %>% dplyr::filter(entrained == "yes!")  
     } else {
       circ.means()
     }
@@ -603,6 +621,7 @@ shinyServer(function(session, input, output) {
     },
     content = function(file) {
       write.csv(smoothed.df() %>% 
+                  dplyr::filter(between(ZTTime, input$ZTcorte, input$ZTDD)) %>%
                   select(-c(lumin, Z_lumin, lumin_detrended)) %>% 
                   pivot_wider(names_from = well, 
                               values_from = lumin_smoothed), 

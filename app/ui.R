@@ -156,13 +156,16 @@ shinyUI(fluidPage(
                                selected = c("LD", "DD"))
             ),
             column(width = 8,
-                   sliderInput("Rpass", HTML("Threshold R (R<sub>tr</sub>):"),
+                   sliderInput("RpassLD", HTML("Threshold R for LD (R<sub>tr-LD</sub>):"),
+                               min = 0, max = 1,
+                               value = 0.5),
+                   sliderInput("RpassDD", HTML("Threshold R for DD (R<sub>tr-DD</sub>):"),
                                min = 0, max = 1,
                                value = 0.5),
                    sliderInput("phasepass", HTML("Threshold phase difference (phase<sub>tr</sub>):"),
                                                  min = 0, max = 12, post = " hs",
                                                  value = 4.0)
-            )
+            ),
           ),
           fluidRow(
             column(width = 12,
