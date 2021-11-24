@@ -124,14 +124,17 @@ shinyServer(function(session, input, output) {
   width = 600 )
   
   # Processed data ####
-  ## Detrending and smoothing ####
-  smoothed.df <- reactive({
+  ## Weighting and  cutting in sections ####
+  weighted.df <- reactive({
     data.df() %>%
       group_by(well) %>%
       mutate(
         Ys = gsignal::conv(abs(lumin),
                            rep(1, 60 * input$det / input$sp),
                            shape = "same"),
+        Ys = if_else(row_number() <= 60 * input$det / (2 * input$sp),
+                     Ys[min(which(row_number() >= 60 * input$det / (2 * input$sp)))],
+                     Ys),
         lumin_weighted = lumin / Ys,
         section = ifelse(
           ZTTime >= input$ZTcorte & ZTTime <= input$ZTLD,
@@ -140,8 +143,14 @@ shinyServer(function(session, input, output) {
                    ZTTime <= input$ZTDD, "DD", "NonU")
         )
       ) %>%
-      ungroup() %>%
-      group_by(well) %>%
+      dplyr::filter(section != "NonU") %>%
+      ungroup() 
+  })
+  
+  ## Detrended and smoothed data for fits and calculations ####
+  smoothed.df <- reactive({
+    weighted.df() %>%
+      group_by(well, section) %>% # Grouping by well and section for detrending and smoothing
       mutate(
         lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
         lumin_smoothed = gsignal::conv(lumin_detrended,
@@ -151,40 +160,100 @@ shinyServer(function(session, input, output) {
       select(-c(Ys, lumin_weighted)) %>%
       ungroup()
   })
+
+  ## Detrended data for plotting ####
+  smoothed.df.plot <- reactive({ 
+    
+    smoothed.df.continuous <- weighted.df() %>% 
+      group_by(well) %>% # Only grouping by well for detrending and smoothing
+      mutate(
+        lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
+        lumin_smoothed = gsignal::conv(lumin_detrended,
+                                       rep(1, 60 * input$smo / input$sp),
+                                       shape = "same")
+      ) %>%
+      select(-c(Ys, lumin_weighted)) %>%
+      ungroup() 
+    
+    smoothed.df.continuous %>%
+      group_by(ZTTime, section) %>%
+      summarise(lumin_se = sd(lumin_smoothed)/sqrt(length(unique(smoothed.df()$well))),
+                lumin_smoothed = mean(lumin_smoothed)) %>%
+      mutate(well = "mean") %>%
+      bind_rows(smoothed.df.continuous %>% select(well, ZTTime, lumin_smoothed, section))
+  })
   
   ## Detrended plot ####
   output$detrendedPlot <- renderPlot({
     
-    smoothed.df.plot <- smoothed.df() %>%
-      group_by(ZTTime, section) %>%
-      summarise(lumin_smoothed = mean(lumin_smoothed)) %>%
-      mutate(well = "mean") %>%
-      rbind(smoothed.df() %>% select(well, ZTTime, lumin_smoothed, section))
+    smoothed.df.plot <- smoothed.df.plot()
     
-    
+    # Filtering and gray rectangles limits
     if (!("all" %in% input$well)) {
       smoothed.df.plot <- smoothed.df.plot %>% dplyr::filter(well %in% input$well)
+      min_lumin <- min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed])
+      max_lumin <- max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed])
+    } else {
+      min_lumin <- min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$section %in% input$section_preprocessed])
+      max_lumin <- max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$section %in% input$section_preprocessed])
     }
     
+    ymin_rect <- min_lumin - abs(min_lumin-max_lumin)*.1
+    ymax_rect <- max_lumin + abs(min_lumin-max_lumin)*.1
+    ymax_label <-min_lumin - abs(min_lumin-max_lumin)*.05
+    
+    # Creates geom_ribbon() if the selected well is "mean"
+    if (input$well == "mean") {
+      extra_plots <- list(geom_ribbon(aes(ymin = lumin_smoothed - lumin_se,
+                                          ymax = lumin_smoothed + lumin_se),
+                                      alpha = .3,
+                                      color = NA))
+    } else {
+      extra_plots <- list()
+    }
+    
+    # Plot
     smoothed.df.plot %>%
       dplyr::filter((section %in% input$section_preprocessed)) %>%
-      drop_na() %>%
+      drop_na(lumin_smoothed) %>%
       ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
       annotate("rect", 
                xmin = seq(12,input$ZTLD-1,24), 
                xmax = seq(24,input$ZTLD,24), 
-               ymin = min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
-               ymax = max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
+               ymin = ymin_rect,
+               ymax = ymax_rect,
+               fill = "grey40",
+               alpha = .2) +
+      annotate("rect", 
+               xmin = seq(12,input$ZTLD-1,24), 
+               xmax = seq(24,input$ZTLD,24), 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = "red",
+               alpha = .7) +
+      annotate("rect", 
+               xmin = seq(0,input$ZTLD-1,24), 
+               xmax = seq(12,input$ZTLD,24), 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = "blue",
+               alpha = 1) +
+      annotate("rect",
+               xmin = input$ZTLD, 
+               xmax = input$ZTDD, 
+               ymin = ymin_rect,
+               ymax = ymax_rect,
                fill = "grey40",
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
-               ymin = min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
-               ymax = max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed]),
-               fill = "grey40",
-               alpha = .2) +
-      geom_line(size = 1) +  
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = "red",
+               alpha = 1) +
+      geom_line(size = 1) +
+      extra_plots +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
                  size = 1) +
@@ -196,8 +265,11 @@ shinyServer(function(session, input, output) {
            title = "Detrended luminescence") +
       scale_colour_viridis(discrete = TRUE) +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
-                         limits = c(input$ZTcorte, input$ZTDD)) +
-      theme(legend.position = "none")
+                         limits = c(input$ZTcorte-1, input$ZTDD+1)) +
+      scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
+      coord_cartesian(expand = FALSE,
+                      clip = 'off') +
+      theme(legend.position = "none") 
     
   }, 
   height = 400, 
@@ -356,26 +428,56 @@ shinyServer(function(session, input, output) {
   ## Cosinor plot ####
   output$cosinorPlot <- renderPlot({
     
-    if (length(input$well == 1) & input$well %in% as.character(unique(data.df()$well)) ){
+    #  Gray rectangles limits
+    min_lumin <- min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor])
+    max_lumin <- max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor])
+
+    ymin_rect <- min_lumin - abs(min_lumin-max_lumin)*.1
+    ymax_rect <- max_lumin + abs(min_lumin-max_lumin)*.1
+    ymax_label <-min_lumin - abs(min_lumin-max_lumin)*.05
+    
+    # The cosinor plot
+    if ((length(input$well) == 1) & input$well %in% as.character(unique(data.df()$well)) ){
     smoothed.df.predicted() %>%
       dplyr::filter(well %in% input$well) %>%
       dplyr::filter(section %in% input$section_cosinor) %>%
       drop_na() %>%
       ggplot(aes(x = ZTTime, color = section)) +
+        annotate("rect", 
+                 xmin = seq(12,input$ZTLD-1,24), 
+                 xmax = seq(24,input$ZTLD,24), 
+                 ymin = ymin_rect,
+                 ymax = ymax_rect,
+                 fill = "grey40",
+                 alpha = .2) +
+        annotate("rect", 
+                 xmin = seq(12,input$ZTLD-1,24), 
+                 xmax = seq(24,input$ZTLD,24), 
+                 ymin = ymin_rect,
+                 ymax = ymax_label,
+                 fill = "red",
+                 alpha = .7) +
+        annotate("rect", 
+                 xmin = seq(0,input$ZTLD-1,24), 
+                 xmax = seq(12,input$ZTLD,24), 
+                 ymin = ymin_rect,
+                 ymax = ymax_label,
+                 fill = "blue",
+                 alpha = 1) +
         annotate("rect",
-                 xmin = seq(12,input$ZTLD-1,24),
-                 xmax = seq(24,input$ZTLD,24),
-                 ymin = min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
-                 ymax = max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
-                 fill = "gray40",
+                 xmin = input$ZTLD, 
+                 xmax = input$ZTDD, 
+                 ymin = ymin_rect,
+                 ymax = ymax_rect,
+                 fill = "grey40",
                  alpha = .2) +
         annotate("rect",
                  xmin = input$ZTLD, 
                  xmax = input$ZTDD, 
-                 ymin = min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
-                 ymax = max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor]),
-                 fill = "gray40",
-                 alpha = .2) +
+                 ymin = ymin_rect,
+                 ymax = ymax_label,
+                 fill = "red",
+                 alpha = 1) +
         geom_line(aes(y = lumin_predicted), size = 1, color = "grey50") +
         geom_line(aes(y = lumin_smoothed), size = 1) +
         geom_vline(xintercept = input$ZTLD,
@@ -389,11 +491,14 @@ shinyServer(function(session, input, output) {
              title = "Cosinor fit") +
         scale_colour_manual(values = c("#7373FF", "#FF7272")) +
         scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
-                           limits = c(input$ZTcorte, input$ZTDD)) +
+                           limits = c(input$ZTcorte-1, input$ZTDD+1)) +
+        scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
+        coord_cartesian(expand = FALSE,
+                        clip = 'off') +
         theme(legend.position = "none")
     } else {
       ggplot() +
-        labs(title = "Please select only one well to plot") +
+        labs(title = "Please a unique well to plot") +
         theme(plot.title = element_text(size = 20, color = "red", hjust = 0.5))
     }
   }, 
@@ -567,65 +672,35 @@ shinyServer(function(session, input, output) {
   observe({
     if (is.null(input$input_file)) {
       shinyjs::disable("downloadData")
-      shinyjs::disable("downloadPeriods")
-      shinyjs::disable("downloadCosinor")
-      shinyjs::disable("downloadCircular")
     } else {
       shinyjs::enable("downloadData")
-      shinyjs::enable("downloadPeriods")
-      shinyjs::enable("downloadCosinor")
-      shinyjs::enable("downloadCircular")
     }
   })
   
-  # Downloadable csv of periods dataset
-  output$downloadPeriods <- downloadHandler(
-    filename = function() {
-      "periods.csv"
-    },
-    content = function(file) {
-      write.csv(periods.df(), 
-                file, 
-                row.names = FALSE)
-    }
-  )
-  
-  # Downloadable csv of parameters dataset
-  output$downloadCosinor <- downloadHandler(
-    filename = function() {
-      "cosinor.csv"
-    },
-    content = function(file) {
-      write.csv(cosinor.df(), 
-                file, 
-                row.names = FALSE)
-    }
-  )
-  
-  # Downloadable csv of parameters dataset
-  output$downloadCircular <- downloadHandler(
-    filename = function() {
-      "circular.csv"
-    },
-    content = function(file) {
-      write.csv(cosinor.df(), 
-                file, 
-                row.names = FALSE)
-    }
-  )
-  
-  # Downloadable csv of pre-processed data
+  # Downloadable xslx
   output$downloadData <- downloadHandler(
     filename = function() {
-      "smoothed_data.csv"
+      "data.xlsx"
     },
     content = function(file) {
-      write.csv(smoothed.df() %>% 
-                  dplyr::filter(between(ZTTime, input$ZTcorte, input$ZTDD)) %>%
-                  select(-c(lumin, Z_lumin, lumin_detrended)) %>% 
-                  pivot_wider(names_from = well, 
-                              values_from = lumin_smoothed), 
-                file, row.names = FALSE)
+      list_of_sheets<- list("Smoothed_LD" = smoothed.df.plot() %>% 
+                              dplyr::filter(section == "LD") %>%
+                              select(-c(lumin_se, section)) %>% 
+                              pivot_wider(names_from = well, 
+                                          values_from = lumin_smoothed), 
+                            "Smoothed_DD" = smoothed.df.plot() %>% 
+                              dplyr::filter(section == "DD") %>%
+                              select(-c(lumin_se, section)) %>% 
+                              pivot_wider(names_from = well, 
+                                          values_from = lumin_smoothed),
+                            "Periods" = periods.df(),
+                            "Cosinor" = cosinor.df(),
+                            "Circular_means" = circ.means() 
+      )
+      
+      write.xlsx(list_of_sheets, 
+                 file)
+      
     }
   )
   

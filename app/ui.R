@@ -8,7 +8,7 @@
 #
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
-               here, circular, gghalves)
+               here, circular, gghalves, xlsx)
 pacman::p_load_gh("emo")
 
 shinyUI(fluidPage(
@@ -33,10 +33,7 @@ shinyUI(fluidPage(
                   width = 180),
       numericInput("sp", "Sampling period (mins):", 30, 
                    min = 1, max = 100, width = 180 ),
-      downloadButton("downloadData", "Download processed data"),
-      downloadButton("downloadPeriods", "Download periods"),
-      downloadButton("downloadCosinor", "Download cosinor data"),
-      downloadButton("downloadCircular", "Download circular data"),
+      downloadButton("downloadData", "Download data")
     ),
     
     # Show a plot of raw data
@@ -62,7 +59,7 @@ shinyUI(fluidPage(
             fluidRow(
               h3("Preprocessing parameters:"),
               column(width = 4,
-                     numericInput("ZTcorte", "Start of LD section (hs):", 48, 
+                     numericInput("ZTcorte", "Start of LD section (hs):", 24, 
                                   min = 1, 
                                   max = 125, 
                                   width = 160),
@@ -72,11 +69,11 @@ shinyUI(fluidPage(
                                   width = 160)
                      ),
               column(width = 4,
-                     numericInput("ZTLD", "End of LD section (s):", 120,
+                     numericInput("ZTLD", "End of LD section (s):", 96,
                                   min = 1, 
                                   max = 250, 
                                   width = 160),
-                     numericInput("det", "Detrend length (s):", 48,
+                     numericInput("det", "Detrend length (s):", 24,
                                   min = 1, 
                                   max = 100, 
                                   width = 160)
