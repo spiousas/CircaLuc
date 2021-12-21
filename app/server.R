@@ -91,8 +91,8 @@ shinyServer(function(session, input, output) {
     data.df.plot %>%
       ggplot(aes(x = ZTTime, y = lumin, colour = well)) +
       annotate("rect", 
-               xmin = seq(input$ZTcorte + 12,input$ZTLD-1,24), 
-               xmax = seq(input$ZTcorte + 24,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
+               xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
                ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
                fill = "grey40",
@@ -104,11 +104,14 @@ shinyServer(function(session, input, output) {
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
                fill = "grey40",
                alpha = .2) +
-      geom_line(size = 1) +
       geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
                  linetype = "dashed",
                  size = 0.5) +
-      labs(x = "Time [hs]",
+      geom_vline(xintercept = seq(12, input$ZTDD, 12),
+                 size = .5, 
+                 color = "gray70") +
+      geom_line(size = 1) +
+      labs(x = "Time (h)",
            y = "Luminescence (RLU/min)",
            color = "Well",
            title = "Luminescence") +
@@ -117,6 +120,8 @@ shinyServer(function(session, input, output) {
                          trans = if_else(input$raw_y_scale == "linear", 
                                          "identity",
                                          input$raw_y_scale)) +
+      scale_x_continuous(breaks = seq(0, input$ZTDD, 12),
+                         limits = c(-1, input$ZTDD+1)) +
       theme(legend.position = "none") 
     
   }, 
@@ -218,22 +223,22 @@ shinyServer(function(session, input, output) {
       drop_na(lumin_smoothed) %>%
       ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
       annotate("rect", 
-               xmin = seq(12,input$ZTLD-1,24), 
-               xmax = seq(24,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
+               xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_rect,
                fill = "grey40",
                alpha = .2) +
       annotate("rect", 
-               xmin = seq(12,input$ZTLD-1,24), 
-               xmax = seq(24,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
+               xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_label,
                fill = "red",
                alpha = .7) +
       annotate("rect", 
-               xmin = seq(0,input$ZTLD-1,24), 
-               xmax = seq(12,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte+12,input$ZTLD-1,24), 
+               xmax = seq(input$ZTcorte+24,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_label,
                fill = "blue",
@@ -252,15 +257,15 @@ shinyServer(function(session, input, output) {
                ymax = ymax_label,
                fill = "red",
                alpha = 1) +
-      geom_line(size = 1) +
       extra_plots +
-      geom_vline(xintercept = input$ZTLD,
-                 linetype = "dashed",
-                 size = 1) +
       geom_vline(xintercept = seq(input$ZTcorte+12, input$ZTDD, 12),
                  size = .5, 
                  color = "gray70") +
-      labs(x = "Time [hs]",
+      geom_vline(xintercept = input$ZTLD,
+                 linetype = "dashed",
+                 size = 1) +
+      geom_line(size = 1) +
+      labs(x = "Time (h)",
            y = "Detrended luminescence",
            title = "Detrended luminescence") +
       scale_colour_viridis(discrete = TRUE) +
@@ -324,7 +329,7 @@ shinyServer(function(session, input, output) {
       )  + 
       coord_cartesian(xlim = c(1.2, NA)) +
       labs(x = "Section",
-           y = "Period [hs]",
+           y = "Period (h)",
            title = "Estimated periods") +
       theme(legend.position = "none")
     
@@ -486,7 +491,7 @@ shinyServer(function(session, input, output) {
         geom_vline(xintercept = seq(input$ZTcorte+12, input$ZTDD, 12),
                    size = .5,
                    color = "gray70") +
-        labs(x = "Time [hs]",
+        labs(x = "Time (h)",
              y = "Detrended luminescence",
              title = "Cosinor fit") +
         scale_colour_manual(values = c("#7373FF", "#FF7272")) +
@@ -683,19 +688,19 @@ shinyServer(function(session, input, output) {
       "data.xlsx"
     },
     content = function(file) {
-      list_of_sheets<- list("Smoothed_LD" = smoothed.df.plot() %>% 
-                              dplyr::filter(section == "LD") %>%
+      list_of_sheets<- list("Periods_LD" = periods.df() %>% 
+                              dplyr::filter(section == "LD"),
+                            "Periods_DD" = periods.df() %>% 
+                              dplyr::filter(section == "DD"),
+                            "Cosinor_LD" = cosinor.df() %>% 
+                              dplyr::filter(section == "LD"),
+                            "Cosinor_DD" = cosinor.df() %>% 
+                              dplyr::filter(section == "LD"),
+                            "Circular_means" = circ.means(),
+                            "Smoothed_data" = smoothed.df.plot() %>%
                               select(-c(lumin_se, section)) %>% 
                               pivot_wider(names_from = well, 
-                                          values_from = lumin_smoothed), 
-                            "Smoothed_DD" = smoothed.df.plot() %>% 
-                              dplyr::filter(section == "DD") %>%
-                              select(-c(lumin_se, section)) %>% 
-                              pivot_wider(names_from = well, 
-                                          values_from = lumin_smoothed),
-                            "Periods" = periods.df(),
-                            "Cosinor" = cosinor.df(),
-                            "Circular_means" = circ.means() 
+                                          values_from = lumin_smoothed)
       )
       
       write.xlsx(list_of_sheets, 
