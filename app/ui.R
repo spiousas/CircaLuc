@@ -8,7 +8,7 @@
 #
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
-               here, circular, gghalves, xlsx)
+               here, circular, gghalves, writexl)
 pacman::p_load_gh("emo")
 
 shinyUI(fluidPage(

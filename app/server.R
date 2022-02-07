@@ -503,7 +503,7 @@ shinyServer(function(session, input, output) {
         theme(legend.position = "none")
     } else {
       ggplot() +
-        labs(title = "Please a unique well to plot") +
+        labs(title = "Please choose a unique well to plot") +
         theme(plot.title = element_text(size = 20, color = "red", hjust = 0.5))
     }
   }, 
@@ -685,27 +685,24 @@ shinyServer(function(session, input, output) {
   # Downloadable xslx
   output$downloadData <- downloadHandler(
     filename = function() {
-      "data.xlsx"
-    },
+      paste0('data-', Sys.Date(), '.xlsx')
+      },
     content = function(file) {
-      list_of_sheets<- list("Periods_LD" = periods.df() %>% 
-                              dplyr::filter(section == "LD"),
-                            "Periods_DD" = periods.df() %>% 
-                              dplyr::filter(section == "DD"),
-                            "Cosinor_LD" = cosinor.df() %>% 
-                              dplyr::filter(section == "LD"),
-                            "Cosinor_DD" = cosinor.df() %>% 
-                              dplyr::filter(section == "LD"),
-                            "Circular_means" = circ.means(),
-                            "Smoothed_data" = smoothed.df.plot() %>%
-                              select(-c(lumin_se, section)) %>% 
-                              pivot_wider(names_from = well, 
-                                          values_from = lumin_smoothed)
-      )
+      list_of_sheets <- list("Periods_LD" = periods.df() %>% 
+                               dplyr::filter(section == "LD"),
+                             "Periods_DD" = periods.df() %>% 
+                               dplyr::filter(section == "DD"),
+                             "Cosinor_LD" = cosinor.df() %>% 
+                               dplyr::filter(section == "LD"),
+                             "Cosinor_DD" = cosinor.df() %>% 
+                               dplyr::filter(section == "LD"),
+                             "Circular_means" = circ.means(),
+                             "Smoothed_data" = smoothed.df.plot() %>%
+                               select(-c(lumin_se, section)) %>% 
+                               pivot_wider(names_from = well, 
+                                           values_from = lumin_smoothed))
       
-      write.xlsx(list_of_sheets, 
-                 file)
-      
+      write_xlsx(list_of_sheets, path = file)
     }
   )
   
