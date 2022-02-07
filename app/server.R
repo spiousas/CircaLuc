@@ -104,13 +104,13 @@ shinyServer(function(session, input, output) {
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
                fill = "grey40",
                alpha = .2) +
-      geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
-                 linetype = "dashed",
-                 size = 0.5) +
       geom_vline(xintercept = seq(12, input$ZTDD, 12),
                  size = .5, 
                  color = "gray70") +
       geom_line(size = 1) +
+      geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
+                 linetype = "dashed",
+                 size = 1) +
       labs(x = "Time (h)",
            y = "Luminescence (RLU/min)",
            color = "Well",
@@ -120,8 +120,8 @@ shinyServer(function(session, input, output) {
                          trans = if_else(input$raw_y_scale == "linear", 
                                          "identity",
                                          input$raw_y_scale)) +
-      scale_x_continuous(breaks = seq(0, input$ZTDD, 12),
-                         limits = c(-1, input$ZTDD+1)) +
+      scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime), input$ZTDD, 12),
+                         limits = c(min(data.df.plot$ZTTime)-1, input$ZTDD+1)) +
       theme(legend.position = "none") 
     
   }, 
@@ -261,10 +261,10 @@ shinyServer(function(session, input, output) {
       geom_vline(xintercept = seq(input$ZTcorte+12, input$ZTDD, 12),
                  size = .5, 
                  color = "gray70") +
+      geom_line(size = 1) +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
                  size = 1) +
-      geom_line(size = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
            title = "Detrended luminescence") +
