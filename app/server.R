@@ -343,7 +343,10 @@ shinyServer(function(session, input, output) {
   ## Cosinor fitting ####
   cosinor.df <- reactive({
     smoothed.df() %>% 
-      dplyr::filter(section %in% c("LD", "DD")) %>% 
+      dplyr::filter((section %in% c("LD", "DD")) & 
+                      (ZTTime < if_else(input$fit_length_cosinor==0, 
+                                        input$ZTDD, 
+                                        input$ZTLD + input$fit_length_cosinor))) %>% # Only fits the first fit_length_cosinor hs of DD
       group_by(well, section) %>% 
       mutate(ZTTime = if_else(section == "LD", 
                               ZTTime - input$ZTcorte,
