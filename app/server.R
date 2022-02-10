@@ -698,7 +698,7 @@ shinyServer(function(session, input, output) {
                              "Cosinor_LD" = cosinor.df() %>% 
                                dplyr::filter(section == "LD"),
                              "Cosinor_DD" = cosinor.df() %>% 
-                               dplyr::filter(section == "LD"),
+                               dplyr::filter(section == "DD"),
                              "Circular_means" = circ.means(),
                              "Smoothed_data" = smoothed.df.plot() %>%
                                select(-c(lumin_se, section)) %>% 
