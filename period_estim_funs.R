@@ -1,4 +1,4 @@
-period_estimation <- function(signal, time, from_freq, to_freq, oversampling_freq, method) {
+period_estimation <- function(signal, time, from_freq, to_freq, oversampling_freq, method, period24) {
   
   if (method == "ls") {
     library(lomb)
@@ -16,7 +16,7 @@ period_estimation <- function(signal, time, from_freq, to_freq, oversampling_fre
     pvalue <- as.numeric(summary.lsp(ls)$Value[12])
     
   } else if (method == "twentyfour") {
-    period <- 24
+    period <- period24
     pvalue <- NA
     
   } else {

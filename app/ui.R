@@ -47,8 +47,8 @@ shinyUI(fluidPage(
             fluidRow(
               column(width = 6,
               selectInput("raw_y_scale", "Luminosity scale:",
-                          c("linear", "log2", "log10")),
-              plotOutput("rawPlot"))
+                          c("linear", "log2", "log10"))),
+              plotOutput("rawPlot")
             )
           )
         ),
@@ -73,7 +73,7 @@ shinyUI(fluidPage(
                      numericInput("ZTLD", "End of LD section (hs):", 96,
                                   min = 1, 
                                   max = 250),
-                     numericInput("LD_duration", "Duration of light (hs):", 12, 
+                     numericInput("LD_duration", "Duration of light (hs) DUMMY:", 12, 
                                   min = 1, 
                                   max = 125),
                      numericInput("det", "Detrend length (hs):", 24,

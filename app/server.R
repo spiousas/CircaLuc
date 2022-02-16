@@ -74,7 +74,7 @@ shinyServer(function(session, input, output) {
       selected = "all"
     )
   })
-
+  
   # Raw data plot ####
   output$rawPlot <- renderPlot({
     
@@ -303,7 +303,8 @@ shinyServer(function(session, input, output) {
                                                    from_freq = 1/input$max_period,
                                                    to_freq = 1/input$min_period,
                                                    oversampling_freq = input$oversampling,
-                                                   method = method))) %>%
+                                                   method = method,
+                                                   period24 = input$LD_period))) %>%
       select(-data) %>%
       unnest(c(period))
   })
