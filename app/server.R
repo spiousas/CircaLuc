@@ -91,8 +91,12 @@ shinyServer(function(session, input, output) {
     data.df.plot %>%
       ggplot(aes(x = ZTTime, y = lumin, colour = well)) +
       annotate("rect", 
-               xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
-               xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
                ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
                fill = "grey40",
@@ -104,7 +108,7 @@ shinyServer(function(session, input, output) {
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
                fill = "grey40",
                alpha = .2) +
-      geom_vline(xintercept = seq(12, input$ZTDD, 12),
+      geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
                  size = .5, 
                  color = "gray70") +
       geom_line(size = 1) +
@@ -223,8 +227,12 @@ shinyServer(function(session, input, output) {
       drop_na(lumin_smoothed) %>%
       ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
       annotate("rect", 
-               xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
-               xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
                ymin = ymin_rect,
                ymax = ymax_rect,
                fill = "grey40",
@@ -258,7 +266,7 @@ shinyServer(function(session, input, output) {
                fill = "red",
                alpha = 1) +
       extra_plots +
-      geom_vline(xintercept = seq(input$ZTcorte+12, input$ZTDD, 12),
+      geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
                  size = .5, 
                  color = "gray70") +
       geom_line(size = 1) +

@@ -73,7 +73,7 @@ shinyUI(fluidPage(
                      numericInput("ZTLD", "End of LD section (hs):", 96,
                                   min = 1, 
                                   max = 250),
-                     numericInput("LD_duration", "Diration of light (hs):", 12, 
+                     numericInput("LD_duration", "Duration of light (hs):", 12, 
                                   min = 1, 
                                   max = 125),
                      numericInput("det", "Detrend length (hs):", 24,
