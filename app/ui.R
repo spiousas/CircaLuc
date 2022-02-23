@@ -31,7 +31,7 @@ shinyUI(fluidPage(
                   choices = "",
                   selected = "",
                   width = 180),
-      numericInput("sp", "Sampling period (mins):", 30, 
+      numericInput("sp", "Sampling interval (min):", 30, 
                    min = 1, max = 100, width = 180 ),
       downloadButton("downloadData", "Download data")
     ),
@@ -62,7 +62,7 @@ shinyUI(fluidPage(
                      numericInput("ZTcorte", "Start of LD section (hs):", 24, 
                                   min = 1, 
                                   max = 125),
-                     numericInput("LD_period", "Period of LD (hs):", 24, 
+                     numericInput("LD_period", "LD period (hs):", 24, 
                                   min = 1, 
                                   max = 125),
                      numericInput("smo","Smoothing width (hs):", 12,
@@ -73,10 +73,10 @@ shinyUI(fluidPage(
                      numericInput("ZTLD", "End of LD section (hs):", 96,
                                   min = 1, 
                                   max = 250),
-                     numericInput("LD_duration", "Duration of light (hs) DUMMY:", 12, 
+                     numericInput("LD_duration", "Light-phase lenght (h):", 12, 
                                   min = 1, 
                                   max = 125),
-                     numericInput("det", "Detrend length (hs):", 24,
+                     numericInput("det", "Detrending length (hs):", 24,
                                   min = 1, 
                                   max = 100)
                      ),
@@ -88,7 +88,7 @@ shinyUI(fluidPage(
                                  multiple = FALSE,
                                  c("Light", "Darkness"),
                                  selected = "Light"),
-                     selectInput("section_preprocessed", "Section:",
+                     selectInput("section_preprocessed", "Plot section:",
                                  multiple = TRUE,
                                  c("LD", "DD"),
                                  selected = c("LD", "DD"))
@@ -100,9 +100,9 @@ shinyUI(fluidPage(
         # Periods ####
         tabPanel("Periods",
                  fluidRow(
-                   h3("Methods for fitting:"),
+                   h3("Fitting methods:"),
                    column(width = 4,
-                          selectInput("methodLD", "Methodfor LD:",
+                          selectInput("methodLD", "LD:",
                                       c("Fourier" = "fourier",
                                         "LS" = "ls",
                                         "24 hs" = "twentyfour"),
@@ -110,7 +110,7 @@ shinyUI(fluidPage(
                                       width = 150)
                           ),
                    column(width = 4,
-                          selectInput("methodDD", "Method for DD:",
+                          selectInput("methodDD", "DD:",
                                       c("Fourier" = "fourier",
                                         "LS" = "ls",
                                         "24 hs" = "24hs"),
@@ -119,7 +119,7 @@ shinyUI(fluidPage(
                           )
                  ),
                  fluidRow(
-                   h3("Period fit parameters:")
+                   h3("Fitting parameters:")
                           ),
                  fluidRow(
                    column(width = 4,
@@ -156,16 +156,16 @@ shinyUI(fluidPage(
                                "Section to plot:", 
                                c("LD", "DD"),
                                selected = c("LD", "DD")),
-                   numericInput("fit_length_cosinor", "Fit only the first x hs of the DD section:", 0, 
+                   numericInput("fit_length_cosinor", "DD section length for fitting (h):", 0, 
                                 min = 4, 
                                 max = 125),
                    "* Set as zero to fit the cosinor to the complete DD section. This number should be larger than 2 hs."
             ),
             column(width = 8,
-                   sliderInput("RpassLD", HTML("Threshold R for LD (R<sub>tr-LD</sub>):"),
+                   sliderInput("RpassLD", HTML("R threshold for LD (R<sub>tr-LD</sub>):"),
                                min = 0, max = 1,
                                value = 0.5),
-                   sliderInput("RpassDD", HTML("Threshold R for DD (R<sub>tr-DD</sub>):"),
+                   sliderInput("RpassDD", HTML("R threshold for DD (R<sub>tr-DD</sub>):"),
                                min = 0, max = 1,
                                value = 0.5),
                    sliderInput("phasepass", HTML("Threshold phase difference (phase<sub>tr</sub>):"),
@@ -191,7 +191,7 @@ shinyUI(fluidPage(
                    column(width = 6,
                           selectInput("filter_figures", 
                                       multiple = FALSE,
-                                      "What to plot:", 
+                                      "Select what to plot:", 
                                       c("All the wells" = "all",
                                         "Only synchronized" = "only_synch",
                                         "Only rhythmic" = "only_rhythm",
@@ -199,9 +199,9 @@ shinyUI(fluidPage(
                                       selected = c("All the wells"))
                    )
                  ),
-           fluidRow(HTML(paste("<b>Synchronized</b>: R>R<sub>tr</sub> in LD.", 
-                               "<b>Rhythmic</b>: R>R<sub>tr</sub> in LD and R>R<sub>tr</sub> in DD.", 
-                               "<b>Entrained</b>: R>R<sub>tr</sub> in LD and phase difference of +/- phase<sub>tr</sub> hs", 
+           fluidRow(HTML(paste("<b>Synchronized</b>: R>R<sub>tr</sub> in LD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations where the period and acrophase are set by the LD/CW zeitgebers.<br>", 
+                               "<b>Rhythmic</b>: R>R<sub>tr</sub> in LD and R>R<sub>tr</sub> in DD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Circadian under constant conditions populations.<br>", 
+                               "<b>Entrained</b>: R>R<sub>tr</sub> in LD and phase difference of +/- phase<sub>tr</sub> h.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations that retained their circadian acrophase when placed under constant conditions<br>", 
                                sep="<br/>"))),
            fluidRow(
              h2("Cosinor fit results"),
@@ -216,7 +216,7 @@ shinyUI(fluidPage(
              )
            ),
           fluidRow(
-            h2("Polar plots of acrophase"),
+            h2("Acrophases polar plot"),
             column(width = 6,
                    plotOutput("acrospolarPlot")
             )

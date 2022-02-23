@@ -566,7 +566,7 @@ shinyServer(function(session, input, output) {
                    width = .2) +
       geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
       labs(x = NULL,
-           y = "Period (hs)",
+           y = "Period (h)",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
       scale_x_discrete(limits = c("LD", "DD")) +
       scale_y_continuous(breaks = seq(0, 48, 6)) +
@@ -632,7 +632,7 @@ shinyServer(function(session, input, output) {
                     position=position_nudge(.2)) +
       geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
       labs(x = NULL,
-           y = "Fitted acrophase (24 hs)",
+           y = "Fitted acrophase (24 h)",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
       scale_x_discrete(limits = c("LD", "DD")) +
       scale_y_continuous(limits = c(0, 24), breaks = seq(0, 24, 6)) +
