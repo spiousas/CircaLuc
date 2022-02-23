@@ -75,6 +75,36 @@ shinyServer(function(session, input, output) {
     )
   })
   
+  observe({
+    updateSelectInput(
+      session,
+      "well_processed",
+      "What to plot:",
+      choices = list(
+        `All the wells` = "all",
+        `Means` = c("Mean" = "all",
+                   "Only synchronized" = "only_synch",
+                   "Only rhythmic" = "only_rhythm",
+                   "Only entrained" = "only_entrained"),
+        `Individual wells` = as.character(unique(data.df()$well))
+      ),
+      selected = "all"
+    )
+  })
+  
+  
+  observe({
+    updateSelectInput(
+      session,
+      "well_cosinor",
+      "Well to plot:",
+      choices = list(
+        `Individual wells` = as.character(unique(data.df()$well))
+      ),
+      selected = as.character(unique(data.df()$well))[1]
+    )
+  })
+  
   # Raw data plot ####
   output$rawPlot <- renderPlot({
     
@@ -126,7 +156,8 @@ shinyServer(function(session, input, output) {
                                          input$raw_y_scale)) +
       scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime), input$ZTDD, 12),
                          limits = c(min(data.df.plot$ZTTime)-1, input$ZTDD+1)) +
-      theme(legend.position = "none") 
+      theme(legend.position = "none",
+            plot.title.position = "plot") 
     
   }, 
   height = 400, 
@@ -242,15 +273,13 @@ shinyServer(function(session, input, output) {
                xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_label,
-               fill = "red",
-               alpha = .7) +
+               fill = "red") +
       annotate("rect", 
                xmin = seq(input$ZTcorte+12,input$ZTLD-1,24), 
                xmax = seq(input$ZTcorte+24,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_label,
-               fill = "blue",
-               alpha = 1) +
+               fill = "blue") +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
@@ -263,8 +292,7 @@ shinyServer(function(session, input, output) {
                xmax = input$ZTDD, 
                ymin = ymin_rect,
                ymax = ymax_label,
-               fill = "red",
-               alpha = 1) +
+               fill = "red") +
       extra_plots +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
                  size = .5, 
@@ -282,7 +310,8 @@ shinyServer(function(session, input, output) {
       scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
       coord_cartesian(expand = FALSE,
                       clip = 'off') +
-      theme(legend.position = "none") 
+      theme(legend.position = "none",
+            plot.title.position = "plot") 
     
   }, 
   height = 400, 
@@ -377,10 +406,10 @@ shinyServer(function(session, input, output) {
       ungroup() %>%
       mutate(
         acro = if_else(amp<0, pi+acro, acro),
-        acro = if_else(acro<0, 2*pi-acro, acro),
+        acro = if_else(acro<0, 2*pi-acro, acro) + if_else(input$LD_starts_with=="Darkness", pi, 0),
         acro = if_else(abs(acro)>2*pi, acro%%(2*pi), acro),
         amp = if_else(amp<0, -amp, amp),
-        acro_24 = acro*12/pi
+        acro_24 = acro*12/pi 
       ) %>%
       group_by(well) %>%
       mutate(synch =  if_else(R[section=="LD"]>input$RpassLD, 
@@ -446,17 +475,16 @@ shinyServer(function(session, input, output) {
   output$cosinorPlot <- renderPlot({
     
     #  Gray rectangles limits
-    min_lumin <- min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor])
-    max_lumin <- max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well & smoothed.df.predicted()$section %in% input$section_cosinor])
+    min_lumin <- min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well_cosinor & smoothed.df.predicted()$section %in% input$section_cosinor])
+    max_lumin <- max(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well_cosinor & smoothed.df.predicted()$section %in% input$section_cosinor])
 
     ymin_rect <- min_lumin - abs(min_lumin-max_lumin)*.1
     ymax_rect <- max_lumin + abs(min_lumin-max_lumin)*.1
     ymax_label <-min_lumin - abs(min_lumin-max_lumin)*.05
     
     # The cosinor plot
-    if ((length(input$well) == 1) & input$well %in% as.character(unique(data.df()$well)) ){
     smoothed.df.predicted() %>%
-      dplyr::filter(well %in% input$well) %>%
+      dplyr::filter(well %in% input$well_cosinor) %>%
       dplyr::filter(section %in% input$section_cosinor) %>%
       drop_na() %>%
       ggplot(aes(x = ZTTime, color = section)) +
@@ -513,11 +541,6 @@ shinyServer(function(session, input, output) {
         coord_cartesian(expand = FALSE,
                         clip = 'off') +
         theme(legend.position = "none")
-    } else {
-      ggplot() +
-        labs(title = "Please choose a unique well to plot") +
-        theme(plot.title = element_text(size = 20, color = "red", hjust = 0.5))
-    }
   }, 
   height = 400, 
   width = 600 )

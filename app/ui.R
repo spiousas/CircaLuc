@@ -26,11 +26,6 @@ shinyUI(fluidPage(
       fileInput("input_file",
                 "Choose input data (.csv or .tsv)",
                 accept = c(".csv", ".tsv")),
-      selectInput("well", "Well(s):", 
-                  multiple = TRUE,
-                  choices = "",
-                  selected = "",
-                  width = 180),
       numericInput("sp", "Sampling interval (min):", 30, 
                    min = 1, max = 100, width = 180 ),
       downloadButton("downloadData", "Download data")
@@ -45,10 +40,18 @@ shinyUI(fluidPage(
           "RAW data",
           fluidPage(
             fluidRow(
-              column(width = 6,
+              column(width = 4,
               selectInput("raw_y_scale", "Luminosity scale:",
-                          c("linear", "log2", "log10"))),
-              plotOutput("rawPlot")
+                          c("linear", "log2", "log10"),
+                          width = 180)),
+              column(width = 4,
+                     selectInput("well", "Well(s):", 
+                                 multiple = TRUE,
+                                 choices = "",
+                                 selected = "",
+                                 width = 180))
+            ), fluidRow(
+              plotOutput("rawPlot"),
             )
           )
         ),
@@ -94,8 +97,18 @@ shinyUI(fluidPage(
                                  selected = c("LD", "DD"))
                      )
           ),
-          plotOutput("detrendedPlot")
-          )
+          fluidRow(
+            selectInput("well_processed", 
+                        multiple = FALSE,
+                        "What to plot:", 
+                        choices = "",
+                        selected = "",
+                        width = 180)
+          ), 
+          fluidRow(
+            plotOutput("detrendedPlot")
+          ) 
+        )
         ),
         # Periods ####
         tabPanel("Periods",
@@ -156,7 +169,12 @@ shinyUI(fluidPage(
                                "Section to plot:", 
                                c("LD", "DD"),
                                selected = c("LD", "DD")),
-                   numericInput("fit_length_cosinor", "DD section length for fitting (h):", 0, 
+                   selectInput("well_cosinor", 
+                               multiple = FALSE,
+                               "Well to plot:", 
+                               c("LD", "DD"),
+                               selected = c("LD", "DD")),
+                   numericInput("fit_length_cosinor", "DD section length for fitting (h)*:", 0, 
                                 min = 4, 
                                 max = 125),
                    "* Set as zero to fit the cosinor to the complete DD section. This number should be larger than 2 hs."
