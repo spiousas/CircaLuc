@@ -575,7 +575,7 @@ shinyServer(function(session, input, output) {
       theme(legend.position = "none")
   }, 
   height = 300, 
-  width = 200 )
+  width = 180 )
   
   ## Amplitude ####
   output$ampsPlot <- renderPlot({
@@ -602,56 +602,22 @@ shinyServer(function(session, input, output) {
       theme(legend.position = "none")
   }, 
   height = 300, 
-  width = 200 )
-  
-  ## Acrophase ####
-  output$acrosPlot <- renderPlot({
-    
-    cosinor.df.plot() %>% ggplot(aes(x = section,
-                                y = acro_24,
-                                color = section,
-                                fill = section)) +
-      geom_jitter(width = .2,
-                  alpha = .2) + 
-      stat_summary(fun.data = mean_se,
-                   geom = "bar", 
-                   alpha = .2) +
-      stat_summary(fun.data = mean_se,
-                   geom = "errorbar", 
-                   alpha = 1,
-                   width = .2,
-                   position=position_nudge(-.2)) +
-      geom_point(data = circ.means(), 
-                 aes(y = mean_acro_24), 
-                 color = "black",
-                 position=position_nudge(.2)) +
-      geom_errorbar(data = circ.means(), 
-                    aes(y = mean_acro_24, ymin = mean_acro_24-sd_acro_24, ymax = mean_acro_24+sd_acro_24), 
-                    width = .2,
-                    color = "black",
-                    position=position_nudge(.2)) +
-      geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
-      labs(x = NULL,
-           y = "Fitted acrophase (24 h)",
-           caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
-      scale_x_discrete(limits = c("LD", "DD")) +
-      scale_y_continuous(limits = c(0, 24), breaks = seq(0, 24, 6)) +
-      scale_colour_manual(values = c("#7373FF", "#FF7272")) +
-      scale_fill_manual(values = c("#7373FF", "#FF7272")) +
-      theme(legend.position = "none")
-    }, 
-    height = 300, 
-    width = 200 )
+  width = 180 )
   
   ## Polar acrophase ####
   output$acrospolarPlot <- renderPlot({
     
     cosinor.df.plot() %>% ggplot(aes(x = acro_24,
-                                   y = 1,
+                                   y = R,
                                    color = section)) +
-      geom_vline(xintercept = c(0, 6, 12, 18), color = "grey60") +
-      geom_hline(yintercept = .5, color = "grey60") +
-      geom_hline(yintercept = 1, color = "grey60") +
+      geom_hline(yintercept = 1, color = "black", size = .25) +
+      geom_vline(xintercept = seq(0,24,3), color = "black", size = .25) +
+      geom_segment(
+        x = 12, xend = 24, 
+        y = 1, yend = 1,
+        size = 2,
+        color = "black"
+      ) +
       geom_point(size = 3, alpha = .5) +
       geom_segment(
         data = circ.means(),
@@ -666,7 +632,7 @@ shinyServer(function(session, input, output) {
            y = NULL,
            color = "Section",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
-      scale_x_continuous(breaks = c(0,6,12,18,24),
+      scale_x_continuous(breaks = seq(0,24,3),
                          limits = c(0, 24)) +
       scale_y_continuous(breaks = 1,
                          limits = c(0, 1)) +

@@ -205,22 +205,16 @@ shinyUI(fluidPage(
                                sep="<br/>"))),
            fluidRow(
              h2("Cosinor fit results"),
-             column(width = 4,
+             column(width = 3,
                     plotOutput("periodsPlot")
              ),
-             column(width = 4,
+             column(width = 3,
                     plotOutput("ampsPlot")
              ),
-             column(width = 4,
-                    plotOutput("acrosPlot")
+             column(width = 6,
+                    plotOutput("acrospolarPlot")
              )
            ),
-          fluidRow(
-            h2("Acrophases polar plot"),
-            column(width = 6,
-                   plotOutput("acrospolarPlot")
-            )
-          ),
           fluidRow(
             h3("Circular data"),
             column(width = 7,
