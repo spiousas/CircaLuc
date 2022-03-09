@@ -119,7 +119,7 @@ shinyServer(function(session, input, output) {
     }
     
     data.df.plot %>%
-      ggplot(aes(x = ZTTime, y = lumin, colour = well)) +
+      ggplot(aes(x = ZTTime, y = lumin)) +
       annotate("rect", 
                xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
                                                input$LD_period/2,0),
@@ -129,27 +129,31 @@ shinyServer(function(session, input, output) {
                           input$ZTLD,input$LD_period), 
                ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
-               fill = "grey40",
+               fill = input$DarkShadeColor,
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
                ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
                ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
-               fill = "grey40",
+               fill = input$DarkShadeColor,
                alpha = .2) +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
                  size = .5, 
                  color = "gray70") +
-      geom_line(size = 1) +
       geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
                  linetype = "dashed",
                  size = 1) +
+      geom_line(aes(group = well),
+                size = .5,
+                color = input$IndividualRawColor) +
+      stat_summary(size = 1,
+                   color = input$MeanRawColor,
+                   geom = "line") +
       labs(x = "Time (h)",
            y = "Luminescence (RLU/min)",
-           color = "Well",
-           title = "Luminescence") +
-      scale_colour_viridis(discrete = TRUE) +
+           title = "Luminescence",
+           subtitle = "Individual wells + mean") +
       scale_y_continuous(labels = scientific,
                          trans = if_else(input$raw_y_scale == "linear", 
                                          "identity",
@@ -226,7 +230,18 @@ shinyServer(function(session, input, output) {
   ## Detrended plot ####
   output$detrendedPlot <- renderPlot({
     
-    smoothed.df.plot <- smoothed.df.plot()
+    smoothed.df.plot <- smoothed.df.plot() %>% 
+      left_join(cosinor.df() %>% select(c("well", "synch", "rhythm","entrained")), by = "well") 
+    
+    smoothed.df.plot <- if (input$filter_signal == "only_synch") {
+      smoothed.df.plot %>% dplyr::filter(synch == "yes!")  
+      } else if (input$filter_signal == "only_rhythm") {
+        smoothed.df.plot %>% dplyr::filter(rhythm == "yes!")  
+      } else if (input$filter_signal == "only_entrained") {
+        smoothed.df.plot %>% dplyr::filter(entrained == "yes!")  
+      } else {
+        smoothed.df.plot
+      }
     
     # Filtering and gray rectangles limits
     if (!("all" %in% input$well)) {
@@ -256,7 +271,7 @@ shinyServer(function(session, input, output) {
     smoothed.df.plot %>%
       dplyr::filter((section %in% input$section_preprocessed)) %>%
       drop_na(lumin_smoothed) %>%
-      ggplot(aes(x = ZTTime, y = lumin_smoothed, colour = well)) +
+      ggplot(aes(x = ZTTime, y = lumin_smoothed)) +
       annotate("rect", 
                xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
                                                input$LD_period/2,0),
@@ -266,44 +281,50 @@ shinyServer(function(session, input, output) {
                           input$ZTLD,input$LD_period), 
                ymin = ymin_rect,
                ymax = ymax_rect,
-               fill = "grey40",
+               fill = input$DarkShadeColor,
                alpha = .2) +
       annotate("rect", 
                xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
                xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_label,
-               fill = "red") +
+               fill = input$DarkColor) +
       annotate("rect", 
                xmin = seq(input$ZTcorte+12,input$ZTLD-1,24), 
                xmax = seq(input$ZTcorte+24,input$ZTLD,24), 
                ymin = ymin_rect,
                ymax = ymax_label,
-               fill = "blue") +
+               fill = input$LightColor) +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
                ymin = ymin_rect,
                ymax = ymax_rect,
-               fill = "grey40",
+               fill = input$DarkShadeColor,
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
                ymin = ymin_rect,
                ymax = ymax_label,
-               fill = "red") +
+               fill = input$DarkColor) +
       extra_plots +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
                  size = .5, 
                  color = "gray70") +
-      geom_line(size = 1) +
+      geom_line(aes(group = well),
+                size = .5,
+                color = input$IndividualProcessedColor) +
+      stat_summary(size = 1,
+                color = input$MeanProcessedColor,
+                geom = "line") +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
                  size = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
-           title = "Detrended luminescence") +
+           title = "Detrended luminescence",
+           subtitle = "Individual wells + mean") +
       scale_colour_viridis(discrete = TRUE) +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                          limits = c(input$ZTcorte-1, input$ZTDD+1)) +
@@ -493,37 +514,37 @@ shinyServer(function(session, input, output) {
                  xmax = seq(24,input$ZTLD,24), 
                  ymin = ymin_rect,
                  ymax = ymax_rect,
-                 fill = "grey40",
+                 fill = input$DarkShadeColor,
                  alpha = .2) +
         annotate("rect", 
                  xmin = seq(12,input$ZTLD-1,24), 
                  xmax = seq(24,input$ZTLD,24), 
                  ymin = ymin_rect,
                  ymax = ymax_label,
-                 fill = "red",
-                 alpha = .7) +
+                 fill = input$DarkColor,
+                 alpha = 1) +
         annotate("rect", 
                  xmin = seq(0,input$ZTLD-1,24), 
                  xmax = seq(12,input$ZTLD,24), 
                  ymin = ymin_rect,
                  ymax = ymax_label,
-                 fill = "blue",
+                 fill = input$LightColor,
                  alpha = 1) +
         annotate("rect",
                  xmin = input$ZTLD, 
                  xmax = input$ZTDD, 
                  ymin = ymin_rect,
                  ymax = ymax_rect,
-                 fill = "grey40",
+                 fill = input$DarkShadeColor,
                  alpha = .2) +
         annotate("rect",
                  xmin = input$ZTLD, 
                  xmax = input$ZTDD, 
                  ymin = ymin_rect,
                  ymax = ymax_label,
-                 fill = "red",
+                 fill = input$DarkColor,
                  alpha = 1) +
-        geom_line(aes(y = lumin_predicted), size = 1, color = "grey50") +
+        geom_line(aes(y = lumin_predicted), size = 1, color = input$FitLineColor) +
         geom_line(aes(y = lumin_smoothed), size = 1) +
         geom_vline(xintercept = input$ZTLD,
                    linetype = "dashed",
@@ -534,7 +555,7 @@ shinyServer(function(session, input, output) {
         labs(x = "Time (h)",
              y = "Detrended luminescence",
              title = "Cosinor fit") +
-        scale_colour_manual(values = c("#7373FF", "#FF7272")) +
+        scale_colour_manual(values = c(input$LineLDColor, input$LineDDColor)) +
         scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                            limits = c(input$ZTcorte-1, input$ZTDD+1)) +
         scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
@@ -546,7 +567,6 @@ shinyServer(function(session, input, output) {
   width = 600 )
   
   # Figures ####
-  
   cosinor.df.plot <- reactive({
     if (input$filter_figures == "only_synch") {
       cosinor.df() %>% dplyr::filter(synch == "yes!")  

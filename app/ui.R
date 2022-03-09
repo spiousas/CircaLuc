@@ -8,8 +8,28 @@
 #
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
-               here, circular, gghalves, writexl)
+               here, circular, gghalves, writexl, shinyWidgets, scales,
+               ggthemes)
 pacman::p_load_gh("emo")
+
+color_choices = list(
+  list(
+    'black',
+    'white',
+    'red',
+    'blue',
+    'forestgreen',
+    '#666666',
+    '#7f7f7f',
+    "#7373FF", 
+    "#FF7272"
+  ),
+  as.list(colorblind_pal()(8)),
+  as.list(brewer_pal(palette = "Blues")(9)),
+  as.list(brewer_pal(palette = "Greens")(9)),
+  as.list(brewer_pal(palette = "Spectral")(11)),
+  as.list(brewer_pal(palette = "Dark2")(8))
+)
 
 shinyUI(fluidPage(
   useShinyjs(),
@@ -67,46 +87,62 @@ shinyUI(fluidPage(
                                   max = 125),
                      numericInput("LD_period", "LD period (hs):", 24, 
                                   min = 1, 
-                                  max = 125),
-                     numericInput("smo","Smoothing width (hs):", 12,
-                                  min = 1, 
-                                  max = 100)
+                                  max = 125)
                      ),
               column(width = 4,
                      numericInput("ZTLD", "End of LD section (hs):", 96,
                                   min = 1, 
                                   max = 250),
-                     numericInput("LD_duration", "Light-phase lenght (h):", 12, 
+                     numericInput("ZTDD", "End of DD section (hs):", 168,
                                   min = 1, 
-                                  max = 125),
+                                  max = 250)
+                     ),
+              column(width = 4,
+                     numericInput("smo","Smoothing width (hs):", 12,
+                                  min = 1, 
+                                  max = 100),
                      numericInput("det", "Detrending length (hs):", 24,
                                   min = 1, 
                                   max = 100)
-                     ),
-              column(width = 4,
-                     numericInput("ZTDD", "End of DD section (hs):", 168,
-                                  min = 1, 
-                                  max = 250),
-                     selectInput("LD_starts_with", "Starts with:",
-                                 multiple = FALSE,
-                                 c("Light", "Darkness"),
-                                 selected = "Light"),
-                     selectInput("section_preprocessed", "Plot section:",
-                                 multiple = TRUE,
-                                 c("LD", "DD"),
-                                 selected = c("LD", "DD"))
-                     )
-          ),
+                     )), 
           fluidRow(
-            selectInput("well_processed", 
-                        multiple = FALSE,
-                        "What to plot:", 
-                        choices = "",
-                        selected = "",
-                        width = 180)
-          ), 
+            h3("Light-Darkness cycle in LD:"),
+            column(width = 4,
+                   numericInput("LD_duration", "Light-phase lenght (h):", 12, 
+                                min = 1, 
+                                max = 125)
+            ),
+            column(width = 4,
+                   selectInput("LD_starts_with", "Starts with:",
+                               multiple = FALSE,
+                               c("Light", "Darkness"),
+                               selected = "Light")
+            )),
           fluidRow(
-            plotOutput("detrendedPlot")
+            h3("Plotting preferences:"),
+            column(width = 4,
+                 selectInput("section_preprocessed", "Plot section:",
+                             multiple = TRUE,
+                             c("LD", "DD"),
+                             selected = c("LD", "DD"))
+                 ),
+            column(width = 4,
+                 selectInput("filter_signal", 
+                             multiple = FALSE,
+                             "Select what to plot*:", 
+                             c("All the wells" = "all",
+                               "Only synchronized" = "only_synch",
+                               "Only rhythmic" = "only_rhythm",
+                               "Only entrained" = "only_entrained"),
+                             selected = c("All the wells"))
+          )),
+          fluidRow(
+            br(),
+            plotOutput("detrendedPlot"),
+            HTML(paste("<b>(*)<br>Synchronized</b>: R>R<sub>tr</sub> in LD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations where the period and acrophase are set by the LD/CW zeitgebers.<br>", 
+                       "<b>Rhythmic</b>: R>R<sub>tr</sub> in LD and R>R<sub>tr</sub> in DD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Circadian under constant conditions populations.<br>", 
+                       "<b>Entrained</b>: R>R<sub>tr</sub> in LD and phase difference of +/- phase<sub>tr</sub> h.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations that retained their circadian acrophase when placed under constant conditions<br>", 
+                       sep="<br/>"))
           ) 
         )
         ),
@@ -239,8 +275,92 @@ shinyUI(fluidPage(
                    dataTableOutput('table_rayleigh')
             )
           )
-          )
+        ),
+        tabPanel("Settings",
+               fluidRow(
+                 h2("Color picker"),
+                 br(),
+                 column(width = 2,
+                        h3("General:"),
+                        spectrumInput(
+                          inputId = "DarkColor",
+                          label = "Darkness box color:",
+                          choices = color_choices,
+                          selected = "red",
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "LightColor",
+                          label = "Light box color:",
+                          choices = color_choices,
+                          selected = "blue",
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "DarkShadeColor",
+                          label = "Darkness shading:",
+                          choices = color_choices,
+                          selected = "#666666",
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        )),
+                 column(width = 2,
+                        h3("Raw data:"),
+                        spectrumInput(
+                          inputId = "MeanRawColor",
+                          label = "Mean raw signal:",
+                          choices = color_choices,
+                          selected = 'red',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "IndividualRawColor",
+                          label = "Individual raw signals:",
+                          choices = color_choices,
+                          selected = '#666666',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        )),
+                 column(width = 2,
+                        h3("Proc data:"),
+                        spectrumInput(
+                          inputId = "MeanProcessedColor",
+                          label = "Mean processed signal:",
+                          choices = color_choices,
+                          selected = 'red',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "IndividualProcessedColor",
+                          label = "Individual processed signals:",
+                          choices = color_choices,
+                          selected = '#666666',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        )),
+                 column(width = 2,
+                        h3("Cosinor:"),
+                        spectrumInput(
+                          inputId = "LineLDColor",
+                          label = "Signal LD:",
+                          choices = color_choices,
+                          selected = '#7373FF',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "LineDDColor",
+                          label = "Signal DD:",
+                          choices = color_choices,
+                          selected = '#FF7272',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "FitLineColor",
+                          label = "Fit line color:",
+                          choices = color_choices,
+                          selected = '#7f7f7f',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        )
+                 ))
         )
+      )
       )
     )
   )
