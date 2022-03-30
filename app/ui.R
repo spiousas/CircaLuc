@@ -9,7 +9,7 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               ggthemes)
+               ggthemes, patchwork)
 pacman::p_load_gh("emo")
 
 color_choices = list(
@@ -70,8 +70,29 @@ shinyUI(fluidPage(
                                  choices = "",
                                  selected = "",
                                  width = 180))
-            ), fluidRow(
+            ), 
+            fluidRow(
+              br(),
               plotOutput("rawPlot"),
+              br(),
+              column(width = 3,
+                     downloadButton("rawDownloadPlot", HTML("Download<br/>Plot"))
+              ),
+              column(width = 2,
+                     numericInput("rawPlot_W","Width (cm):", 20,
+                                  min = 1, 
+                                  max = 100)
+              ),
+              column(width = 2,
+                     numericInput("rawPlot_H","Height (cm):", 10,
+                                  min = 1, 
+                                  max = 100)
+              ),
+              column(width = 2,
+                     numericInput("rawPlot_DPI","DPI:", 300,
+                                  min = 1, 
+                                  max = 3000)
+              )
             )
           )
         ),
@@ -139,6 +160,27 @@ shinyUI(fluidPage(
           fluidRow(
             br(),
             plotOutput("detrendedPlot"),
+            br(),
+            column(width = 3,
+                   downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
+                   ),
+            column(width = 2,
+                   numericInput("detrendedPlot_W","Width (cm):", 20,
+                                min = 1, 
+                                max = 100)
+                   ),
+            column(width = 2,
+                   numericInput("detrendedPlot_H","Height (cm):", 10,
+                                min = 1, 
+                                max = 100)
+            ),
+            column(width = 2,
+                   numericInput("detrendedPlot_DPI","DPI:", 300,
+                                min = 1, 
+                                max = 3000)
+            )
+          ),
+          fluidRow(
             HTML(paste("<b>(*)<br>Synchronized</b>: R>R<sub>tr</sub> in LD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations where the period and acrophase are set by the LD/CW zeitgebers.<br>", 
                        "<b>Rhythmic</b>: R>R<sub>tr</sub> in LD and R>R<sub>tr</sub> in DD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Circadian under constant conditions populations.<br>", 
                        "<b>Entrained</b>: R>R<sub>tr</sub> in LD and phase difference of +/- phase<sub>tr</sub> h.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations that retained their circadian acrophase when placed under constant conditions<br>", 
@@ -228,8 +270,26 @@ shinyUI(fluidPage(
             ),
           ),
           fluidRow(
-            column(width = 12,
-                   plotOutput("cosinorPlot")
+            br(),
+            plotOutput("cosinorPlot"),
+            br(),
+            column(width = 3,
+                  downloadButton("cosinorDownloadPlot", HTML("Download<br/>Plot"))
+            ),
+            column(width = 2,
+                   numericInput("cosinorPlot_W","Width (cm):", 20,
+                                min = 1, 
+                                max = 100)
+            ),
+            column(width = 2,
+                   numericInput("cosinorPlot_H","Height (cm):", 10,
+                                min = 1, 
+                                max = 100)
+            ),
+            column(width = 2,
+                   numericInput("cosinorPlot_DPI","DPI:", 300,
+                                min = 1, 
+                                max = 3000)
             )
           ),
           fluidRow(
@@ -259,14 +319,24 @@ shinyUI(fluidPage(
                                sep="<br/>"))),
            fluidRow(
              h2("Cosinor fit results"),
+             plotOutput("statPlot"),
              column(width = 3,
-                    plotOutput("periodsPlot")
+                    downloadButton("statDownloadPlot", HTML("Download<br/>Plot"))
              ),
-             column(width = 3,
-                    plotOutput("ampsPlot")
+             column(width = 2,
+                    numericInput("statPlot_W","Width (cm):", 20,
+                                 min = 1, 
+                                 max = 100)
              ),
-             column(width = 6,
-                    plotOutput("acrospolarPlot")
+             column(width = 2,
+                    numericInput("statPlot_H","Height (cm):", 10,
+                                 min = 1, 
+                                 max = 100)
+             ),
+             column(width = 2,
+                    numericInput("statPlot_DPI","DPI:", 300,
+                                 min = 1, 
+                                 max = 3000)
              )
            ),
           fluidRow(
@@ -358,7 +428,25 @@ shinyUI(fluidPage(
                           selected = '#7f7f7f',
                           options = list(`toggle-palette-more-text` = "Show more")
                         )
-                 ))
+                 ),
+                 column(width = 2,
+                        h3("Figs:"),
+                        spectrumInput(
+                          inputId = "FigsLDColor",
+                          label = "LD:",
+                          choices = color_choices,
+                          selected = '#7373FF',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                        spectrumInput(
+                          inputId = "FigsDDColor",
+                          label = "DD:",
+                          choices = color_choices,
+                          selected = '#FF7272',
+                          options = list(`toggle-palette-more-text` = "Show more")
+                        ),
+                )
+          )
         )
       )
       )

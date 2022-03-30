@@ -106,7 +106,8 @@ shinyServer(function(session, input, output) {
   })
   
   # Raw data plot ####
-  output$rawPlot <- renderPlot({
+  
+  data_rawPlot <- reactive({
     
     data.df.plot <- data.df() %>%
       group_by(ZTTime) %>%
@@ -163,9 +164,11 @@ shinyServer(function(session, input, output) {
       theme(legend.position = "none",
             plot.title.position = "plot") 
     
-  }, 
-  height = 400, 
-  width = 600 )
+  })
+  
+  output$rawPlot <- renderPlot({data_rawPlot()}, 
+                               height = 400, 
+                               width = 600 )
   
   # Processed data ####
   ## Weighting and  cutting in sections ####
@@ -228,7 +231,7 @@ shinyServer(function(session, input, output) {
   })
   
   ## Detrended plot ####
-  output$detrendedPlot <- renderPlot({
+  data_detrendedPlot <- reactive({
     
     smoothed.df.plot <- smoothed.df.plot() %>% 
       left_join(cosinor.df() %>% select(c("well", "synch", "rhythm","entrained")), by = "well") 
@@ -284,14 +287,22 @@ shinyServer(function(session, input, output) {
                fill = input$DarkShadeColor,
                alpha = .2) +
       annotate("rect", 
-               xmin = seq(input$ZTcorte,input$ZTLD-1,24), 
-               xmax = seq(input$ZTcorte+12,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
                ymin = ymin_rect,
                ymax = ymax_label,
                fill = input$DarkColor) +
       annotate("rect", 
-               xmin = seq(input$ZTcorte+12,input$ZTLD-1,24), 
-               xmax = seq(input$ZTcorte+24,input$ZTLD,24), 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               0, input$LD_period/2),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2, input$LD_period),
+                          input$ZTLD,input$LD_period), 
                ymin = ymin_rect,
                ymax = ymax_label,
                fill = input$LightColor) +
@@ -317,7 +328,8 @@ shinyServer(function(session, input, output) {
                 color = input$IndividualProcessedColor) +
       stat_summary(size = 1,
                 color = input$MeanProcessedColor,
-                geom = "line") +
+                geom = "line", 
+                fun.data = mean_se) +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
                  size = 1) +
@@ -334,9 +346,11 @@ shinyServer(function(session, input, output) {
       theme(legend.position = "none",
             plot.title.position = "plot") 
     
-  }, 
-  height = 400, 
-  width = 600 )
+  })
+  
+  output$detrendedPlot <- renderPlot({data_detrendedPlot()}, 
+                                     height = 400, 
+                                     width = 600)
   
   # Periods ####
   ## Period estimation ####
@@ -488,12 +502,12 @@ shinyServer(function(session, input, output) {
                                   ZTTime - input$ZTLD)) %>%
       left_join(cosinor.df() %>% select(-c(R, acro_24, synch)),
                 by = c("well", "section")) %>%
-      mutate(lumin_predicted = alpha + amp * cos(2*pi*ZTTime_fit/period - acro)) %>%
+      mutate(lumin_predicted = alpha + amp * cos(2*pi*ZTTime_fit/period - acro - if_else(input$LD_starts_with=="Darkness", pi, 0))) %>%
       select(-c(period, alpha, amp, acro, ZTTime_fit))
   })
   
   ## Cosinor plot ####
-  output$cosinorPlot <- renderPlot({
+  data_cosinorPlot <- reactive({
     
     #  Gray rectangles limits
     min_lumin <- min(smoothed.df.predicted()$lumin_smoothed[smoothed.df.predicted()$well %in% input$well_cosinor & smoothed.df.predicted()$section %in% input$section_cosinor])
@@ -510,26 +524,36 @@ shinyServer(function(session, input, output) {
       drop_na() %>%
       ggplot(aes(x = ZTTime, color = section)) +
         annotate("rect", 
-                 xmin = seq(12,input$ZTLD-1,24), 
-                 xmax = seq(24,input$ZTLD,24), 
-                 ymin = ymin_rect,
-                 ymax = ymax_rect,
-                 fill = input$DarkShadeColor,
-                 alpha = .2) +
-        annotate("rect", 
-                 xmin = seq(12,input$ZTLD-1,24), 
-                 xmax = seq(24,input$ZTLD,24), 
-                 ymin = ymin_rect,
-                 ymax = ymax_label,
-                 fill = input$DarkColor,
-                 alpha = 1) +
-        annotate("rect", 
-                 xmin = seq(0,input$ZTLD-1,24), 
-                 xmax = seq(12,input$ZTLD,24), 
-                 ymin = ymin_rect,
-                 ymax = ymax_label,
-                 fill = input$LightColor,
-                 alpha = 1) +
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
+               ymin = ymin_rect,
+               ymax = ymax_rect,
+               fill = input$DarkShadeColor,
+               alpha = .2) +
+      annotate("rect", 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = input$DarkColor) +
+      annotate("rect", 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               0, input$LD_period/2),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2, input$LD_period),
+                          input$ZTLD,input$LD_period), 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = input$LightColor) +
         annotate("rect",
                  xmin = input$ZTLD, 
                  xmax = input$ZTDD, 
@@ -554,7 +578,7 @@ shinyServer(function(session, input, output) {
                    color = "gray70") +
         labs(x = "Time (h)",
              y = "Detrended luminescence",
-             title = "Cosinor fit") +
+             title = paste0("Cosinor fit for well ", input$well_cosinor)) +
         scale_colour_manual(values = c(input$LineLDColor, input$LineDDColor)) +
         scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                            limits = c(input$ZTcorte-1, input$ZTDD+1)) +
@@ -562,9 +586,11 @@ shinyServer(function(session, input, output) {
         coord_cartesian(expand = FALSE,
                         clip = 'off') +
         theme(legend.position = "none")
-  }, 
-  height = 400, 
-  width = 600 )
+  })
+  
+  output$cosinorPlot <- renderPlot({data_cosinorPlot()}, 
+                                   height = 400, 
+                                   width = 600 )
   
   # Figures ####
   cosinor.df.plot <- reactive({
@@ -592,7 +618,7 @@ shinyServer(function(session, input, output) {
   })
   
   ## Period ####
-  output$periodsPlot <- renderPlot({
+  data_periodsPlot <- reactive({
 
     cosinor.df.plot() %>% ggplot(aes(x = section,
                                    y = period,
@@ -613,15 +639,13 @@ shinyServer(function(session, input, output) {
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
       scale_x_discrete(limits = c("LD", "DD")) +
       scale_y_continuous(breaks = seq(0, 48, 6)) +
-      scale_colour_manual(values = c("#7373FF", "#FF7272")) +
-      scale_fill_manual(values = c("#7373FF", "#FF7272")) +
+      scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none")
-  }, 
-  height = 300, 
-  width = 180 )
+  })
   
   ## Amplitude ####
-  output$ampsPlot <- renderPlot({
+  data_ampsPlot <- reactive({
     
     cosinor.df.plot() %>% ggplot(aes(x = section,
                                 y = amp,
@@ -640,16 +664,13 @@ shinyServer(function(session, input, output) {
            y = "Fitted amplitude",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
       scale_x_discrete(limits=c("LD", "DD")) +
-      scale_colour_manual(values = c("#7373FF", "#FF7272")) +
-      scale_fill_manual(values = c("#7373FF", "#FF7272")) +
+      scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none")
-  }, 
-  height = 300, 
-  width = 180 )
+  })
   
   ## Polar acrophase ####
-  output$acrospolarPlot <- renderPlot({
-    
+  data_acrospolarPlot <- reactive({
     cosinor.df.plot() %>% ggplot(aes(x = acro_24,
                                    y = R,
                                    color = section)) +
@@ -681,12 +702,18 @@ shinyServer(function(session, input, output) {
                          limits = c(0, 1)) +
       theme_void() +
       coord_polar() +
-      scale_colour_manual(values = c("#7373FF", "#FF7272")) +
+      scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "top",
             axis.text.x = element_text(size = 12))
-  }, 
-  height = 300, 
-  width = 300 )
+  })
+  
+  data_statPlot <- reactive({ data_periodsPlot() + data_ampsPlot() + data_acrospolarPlot() + 
+      plot_layout(widths = c(1, 1, 3)) 
+    })
+  
+  output$statPlot <- renderPlot({ data_statPlot() },
+      height = 300, 
+      width = 600 )
   
   ## Rayleigh table ####
   output$table_rayleigh <- renderDataTable(
@@ -694,6 +721,7 @@ shinyServer(function(session, input, output) {
   )
   
   # Download ####
+  ## Files ####
   # Hide download action buttons when there is no file loaded
   observe({
     if (is.null(input$input_file)) {
@@ -724,6 +752,63 @@ shinyServer(function(session, input, output) {
                                            values_from = lumin_smoothed))
       
       write_xlsx(list_of_sheets, path = file)
+    }
+  )
+  
+  ## Plots ####
+  # Raw plot
+  output$rawDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("rawPlot-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$rawPlot_W,
+             height = input$rawPlot_H,
+             dpi = input$rawPlot_DPI,
+             plot = data_rawPlot())
+    }
+  )
+  
+  # Detrended plot
+  output$detrendedDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("detrendedPlot-", Sys.Date(), ".png"))
+      },
+    content = function(file){
+      ggsave(file, 
+             width = input$detrendedPlot_W,
+             height = input$detrendedPlot_H,
+             dpi = input$detrendedPlot_DPI,
+             plot = data_detrendedPlot())
+    }
+  )
+  
+  # Cosinor plot
+  output$cosinorDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("cosinorPlot-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$cosinorPlot_W,
+             height = input$cosinorPlot_H,
+             dpi = input$cosinorPlot_DPI,
+             plot = data_cosinorPlot())
+    }
+  )
+  
+  # Stat plots
+  output$statDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("statPlots-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$statPlot_W,
+             height = input$statPlot_H,
+             dpi = input$statPlot_DPI,
+             plot = data_statPlot())
     }
   )
   
