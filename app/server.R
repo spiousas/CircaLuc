@@ -13,23 +13,23 @@ shinyServer(function(session, input, output) {
   
   # Setup ####
   
-  ## ggplot2 theme
+  # ggplot2 theme
   theme_set(
     theme_minimal(
       ## increase size of all text elements
-      base_size = 14, 
+      base_size = 14,
       ## set custom font family for all text elements
       base_family = "Arial")
   )
-  
-  ## overwrite other defaults of theme_minimal()
+
+  # overwrite other defaults of theme_minimal()
   theme_update(
     ## remove major horizontal grid lines
     panel.grid.major.x = element_blank(),
     ## remove all minor grid lines
     panel.grid.minor = element_blank(),
   )
-  
+    
   # Set working directory
   source(here("period_estim_funs.R"))
   
@@ -441,7 +441,8 @@ shinyServer(function(session, input, output) {
       ungroup() %>%
       mutate(
         acro = if_else(amp<0, pi+acro, acro),
-        acro = if_else(acro<0, 2*pi-acro, acro) + if_else(input$LD_starts_with=="Darkness", pi, 0),
+        acro = if_else(acro<0, 2*pi-acro, acro) + 
+               if_else((input$LD_starts_with=="Darkness") & (section == "LD"), pi, 0),
         acro = if_else(abs(acro)>2*pi, acro%%(2*pi), acro),
         amp = if_else(amp<0, -amp, amp),
         acro_24 = acro*12/pi 
@@ -502,7 +503,8 @@ shinyServer(function(session, input, output) {
                                   ZTTime - input$ZTLD)) %>%
       left_join(cosinor.df() %>% select(-c(R, acro_24, synch)),
                 by = c("well", "section")) %>%
-      mutate(lumin_predicted = alpha + amp * cos(2*pi*ZTTime_fit/period - acro - if_else(input$LD_starts_with=="Darkness", pi, 0))) %>%
+      mutate(lumin_predicted = alpha + amp * cos(2*pi*ZTTime_fit/period - 
+                                                   acro - if_else((input$LD_starts_with=="Darkness") & (section == "LD"), pi, 0))) %>%
       select(-c(period, alpha, amp, acro, ZTTime_fit))
   })
   

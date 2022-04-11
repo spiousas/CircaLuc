@@ -346,6 +346,7 @@ shinyUI(fluidPage(
             )
           )
         ),
+        # Settings ####
         tabPanel("Settings",
                fluidRow(
                  h2("Color picker"),
@@ -372,7 +373,10 @@ shinyUI(fluidPage(
                           choices = color_choices,
                           selected = "#666666",
                           options = list(`toggle-palette-more-text` = "Show more")
-                        )),
+                        ),
+                        numericInput("FontSize","Font size (pt):", 32,
+                                     min = 2, 
+                                     max = 36)),
                  column(width = 2,
                         h3("Raw data:"),
                         spectrumInput(
@@ -427,8 +431,7 @@ shinyUI(fluidPage(
                           choices = color_choices,
                           selected = '#7f7f7f',
                           options = list(`toggle-palette-more-text` = "Show more")
-                        )
-                 ),
+                        )),
                  column(width = 2,
                         h3("Figs:"),
                         spectrumInput(
@@ -444,7 +447,7 @@ shinyUI(fluidPage(
                           choices = color_choices,
                           selected = '#FF7272',
                           options = list(`toggle-palette-more-text` = "Show more")
-                        ),
+                        )
                 )
           )
         )
