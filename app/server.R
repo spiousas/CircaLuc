@@ -197,7 +197,7 @@ shinyServer(function(session, input, output) {
   ## Detrended and smoothed data for fits and calculations ####
   smoothed.df <- reactive({
     weighted.df() %>%
-      group_by(well, section) %>% # Grouping by well and section for detrending and smoothing
+      group_by(well) %>% # Grouping by well for detrending and smoothing
       mutate(
         lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
         lumin_smoothed = gsignal::conv(lumin_detrended,
