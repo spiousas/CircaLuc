@@ -35,7 +35,7 @@ shinyServer(function(session, input, output) {
   
   # Raw data ####
   
-  ## Get and reshape the data ####
+  ## ├Get and reshape the data ####
   data.df <- reactive({
     file <- input$input_file
     ext <- tools::file_ext(file$datapath)
@@ -171,7 +171,7 @@ shinyServer(function(session, input, output) {
                                width = 600 )
   
   # Processed data ####
-  ## Weighting and  cutting in sections ####
+  ## ├Weighting and  cutting in sections ####
   weighted.df <- reactive({
     data.df() %>%
       group_by(well) %>%
@@ -194,10 +194,10 @@ shinyServer(function(session, input, output) {
       ungroup() 
   })
   
-  ## Detrended and smoothed data for fits and calculations ####
+  ## ├Detrended and smoothed data for fits and calculations ####
   smoothed.df <- reactive({
     weighted.df() %>%
-      group_by(well) %>% # Grouping by well for detrending and smoothing
+      group_by(well, section) %>% # Grouping by well for detrending and smoothing
       mutate(
         lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
         lumin_smoothed = gsignal::conv(lumin_detrended,
@@ -208,11 +208,11 @@ shinyServer(function(session, input, output) {
       ungroup()
   })
 
-  ## Detrended data for plotting ####
+  ## ├Detrended data for plotting ####
   smoothed.df.plot <- reactive({ 
     
     smoothed.df.continuous <- weighted.df() %>% 
-      group_by(well) %>% # Only grouping by well for detrending and smoothing
+      group_by(well, section) %>% # Only grouping by well for detrending and smoothing
       mutate(
         lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
         lumin_smoothed = gsignal::conv(lumin_detrended,
@@ -230,7 +230,7 @@ shinyServer(function(session, input, output) {
       bind_rows(smoothed.df.continuous %>% select(well, ZTTime, lumin_smoothed, section))
   })
   
-  ## Detrended plot ####
+  ## ├Detrended plot ####
   data_detrendedPlot <- reactive({
     
     smoothed.df.plot <- smoothed.df.plot() %>% 
@@ -353,7 +353,7 @@ shinyServer(function(session, input, output) {
                                      width = 600)
   
   # Periods ####
-  ## Period estimation ####
+  ## ├Period estimation ####
   periods.df <- reactive({
     smoothed.df() %>%
       dplyr::filter(section %in% c("LD", "DD")) %>%
@@ -373,7 +373,7 @@ shinyServer(function(session, input, output) {
       unnest(c(period))
   })
   
-  ## Periods plot ####
+  ## ├Periods plot ####
   output$periodsPlot <- renderPlot({
     
     periods.df.plot <- periods.df()
@@ -413,7 +413,7 @@ shinyServer(function(session, input, output) {
     )
 
   # Cosinor ####
-  ## Cosinor fitting ####
+  ## ├Cosinor fitting ####
   cosinor.df <- reactive({
     smoothed.df() %>% 
       dplyr::filter((section %in% c("LD", "DD")) & 
@@ -441,11 +441,11 @@ shinyServer(function(session, input, output) {
       ungroup() %>%
       mutate(
         acro = if_else(amp<0, pi+acro, acro),
-        acro = if_else(acro<0, 2*pi-acro, acro) + 
+        acro = if_else(acro<0, acro + (abs(acro)%/%(2*pi)+1) * 2*pi, acro) +
                if_else((input$LD_starts_with=="Darkness") & (section == "LD"), pi, 0),
         acro = if_else(abs(acro)>2*pi, acro%%(2*pi), acro),
         amp = if_else(amp<0, -amp, amp),
-        acro_24 = acro*12/pi 
+        acro_24 = acro*12/pi
       ) %>%
       group_by(well) %>%
       mutate(synch =  if_else(R[section=="LD"]>input$RpassLD, 
@@ -458,7 +458,7 @@ shinyServer(function(session, input, output) {
       ungroup()
   })
   
-  ## Circular means ####
+  ## ├Circular means ####
   circ.means <- reactive({
     
     if (input$filter_figures == "only_synch") {
@@ -489,12 +489,12 @@ shinyServer(function(session, input, output) {
       mutate(r = exp(-sd_acro_24^2/2))
   })
 
-  ## Cosinor table ####
+  ## ├Cosinor table ####
   output$table_cosinor <- renderDataTable(
     cosinor.df()
   )
   
-  ## Predicted values ####
+  ## ├Predicted values ####
   smoothed.df.predicted <- reactive({
     smoothed.df() %>%
       dplyr::filter(section %in% c("LD", "DD")) %>% 
@@ -508,7 +508,7 @@ shinyServer(function(session, input, output) {
       select(-c(period, alpha, amp, acro, ZTTime_fit))
   })
   
-  ## Cosinor plot ####
+  ## ├Cosinor plot ####
   data_cosinorPlot <- reactive({
     
     #  Gray rectangles limits
@@ -619,7 +619,7 @@ shinyServer(function(session, input, output) {
     }
   })
   
-  ## Period ####
+  ## ├Period ####
   data_periodsPlot <- reactive({
 
     cosinor.df.plot() %>% ggplot(aes(x = section,
@@ -646,7 +646,7 @@ shinyServer(function(session, input, output) {
       theme(legend.position = "none")
   })
   
-  ## Amplitude ####
+  ## ├Amplitude ####
   data_ampsPlot <- reactive({
     
     cosinor.df.plot() %>% ggplot(aes(x = section,
@@ -671,7 +671,7 @@ shinyServer(function(session, input, output) {
       theme(legend.position = "none")
   })
   
-  ## Polar acrophase ####
+  ## ├Polar acrophase ####
   data_acrospolarPlot <- reactive({
     cosinor.df.plot() %>% ggplot(aes(x = acro_24,
                                    y = R,
@@ -717,13 +717,13 @@ shinyServer(function(session, input, output) {
       height = 300, 
       width = 600 )
   
-  ## Rayleigh table ####
+  ## ├Rayleigh table ####
   output$table_rayleigh <- renderDataTable(
     circ.means()
   )
   
   # Download ####
-  ## Files ####
+  ## ├Files ####
   # Hide download action buttons when there is no file loaded
   observe({
     if (is.null(input$input_file)) {
@@ -757,7 +757,7 @@ shinyServer(function(session, input, output) {
     }
   )
   
-  ## Plots ####
+  ## ├Plots ####
   # Raw plot
   output$rawDownloadPlot <- downloadHandler(
     filename = function(){

@@ -204,13 +204,13 @@ shinyUI(fluidPage(
                           selectInput("methodDD", "DD:",
                                       c("Fourier" = "fourier",
                                         "LS" = "ls",
-                                        "24 hs" = "24hs"),
+                                        "24 hs" = "twentyfour"),
                                       selected = "ls",
                                       width = 150)
                           )
                  ),
                  fluidRow(
-                   h3("Fitting parameters:")
+                   h3("Fitting parameters (LS):")
                           ),
                  fluidRow(
                    column(width = 4,
