@@ -1,7 +1,8 @@
+# Period estimation functions ####
+pacman::p_load(lomb)
 period_estimation <- function(signal, time, from_freq, to_freq, oversampling_freq, method, period24) {
   
   if (method == "ls") {
-    library(lomb)
     
     ls <- lsp(
       signal,
@@ -21,10 +22,29 @@ period_estimation <- function(signal, time, from_freq, to_freq, oversampling_fre
     
   } else {
     stop("Wrong period estimation method!")
-  
+    
   }
 
   return(tibble(period = period, 
                 pvalue = pvalue))
+  
+}
+
+# Detrending functions ####
+pacman::p_load(pracma)
+circaluc_detrending <- function(signal, method) {
+  
+  if (method == "linear") {
+    signal <- pracma::detrend(signal, "linear")[, 1]
+    
+  } else if (method == "exponential") {
+    signal <- exp(pracma::detrend(log(signal), "linear")[, 1])
+    
+  } else {
+    stop("Wrong detrending estimation method!")
+    
+  }
+  
+  return(signal)
   
 }

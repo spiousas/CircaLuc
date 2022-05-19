@@ -31,7 +31,7 @@ shinyServer(function(session, input, output) {
   )
     
   # Set working directory
-  source(here("period_estim_funs.R"))
+  source(here("R/aux_funs.R"))
   
   # Raw data ####
   
@@ -194,12 +194,12 @@ shinyServer(function(session, input, output) {
       ungroup() 
   })
   
-  ## ├Detrended and smoothed data for fits and calculations ####
+  ## Detrended and smoothed data for fits and calculations ####
   smoothed.df <- reactive({
     weighted.df() %>%
       group_by(well, section) %>% # Grouping by well for detrending and smoothing
       mutate(
-        lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
+        lumin_detrended = circaluc_detrending(lumin_weighted, input$method_detrending),
         lumin_smoothed = gsignal::conv(lumin_detrended,
                                        rep(1, 60 * input$smo / input$sp),
                                        shape = "same")

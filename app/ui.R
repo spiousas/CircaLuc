@@ -108,7 +108,12 @@ shinyUI(fluidPage(
                                   max = 125),
                      numericInput("LD_period", "LD period (hs):", 24, 
                                   min = 1, 
-                                  max = 125)
+                                  max = 125),
+                     selectInput("method_detrending", 
+                                 multiple = FALSE,
+                                 "Detrending method:", 
+                                 c("Linear" = "linear",
+                                   "Exponential" = "exponential"))
                      ),
               column(width = 4,
                      numericInput("ZTLD", "End of LD section (hs):", 96,
