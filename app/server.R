@@ -48,7 +48,8 @@ shinyServer(function(session, input, output) {
                  names_to = "well",
                  values_to = "lumin") %>%
     mutate(well = str_trim(well)) %>%
-    group_by(well) %>%
+    separate(well, c("group", "well"), sep = "-") %>%
+    group_by(group, well) %>%
     summarise(ZTTime = ZTTime[1:length(na.trim(lumin))],
               lumin = na.trim(lumin)) %>% # Clean trailing NAs in Lumin
     mutate(
@@ -78,6 +79,15 @@ shinyServer(function(session, input, output) {
   observe({
     updateSelectInput(
       session,
+      "group",
+      "Group:",
+      choices = as.character(unique(data.df()$group))
+    )
+  })
+  
+  observe({
+    updateSelectInput(
+      session,
       "well_processed",
       "What to plot:",
       choices = list(
@@ -91,7 +101,6 @@ shinyServer(function(session, input, output) {
       selected = "all"
     )
   })
-  
   
   observe({
     updateSelectInput(
@@ -112,8 +121,9 @@ shinyServer(function(session, input, output) {
     data.df.plot <- data.df() %>%
       group_by(ZTTime) %>%
       summarise(lumin = mean(lumin)) %>%
-      mutate(well = "mean") %>%
-      rbind(data.df() %>% select(well, ZTTime, lumin))
+      mutate(group = "mean",
+             well = "mean") %>%
+      rbind(data.df() %>% select(well, group, ZTTime, lumin))
     
     if (!("all" %in% input$well)) {
       data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$well)

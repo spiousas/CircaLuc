@@ -33,8 +33,9 @@ color_choices = list(
 
 shinyUI(fluidPage(
   useShinyjs(),
+  
   # Application title ####
-  titlePanel(paste0("CircaLuc v0.1 ", emo::ji("clock"))),
+  titlePanel(paste0("CircaLuc v0.3 ", emo::ji("clock"))),
   
   # Sidebar ####
   sidebarLayout(
@@ -64,6 +65,12 @@ shinyUI(fluidPage(
               selectInput("raw_y_scale", "Luminosity scale:",
                           c("linear", "log2", "log10"),
                           width = 180)),
+              column(width = 4,
+                     selectInput("group", "Group:", 
+                                 multiple = FALSE,
+                                 choices = "",
+                                 selected = "",
+                                 width = 180)),
               column(width = 4,
                      selectInput("well", "Well(s):", 
                                  multiple = TRUE,
