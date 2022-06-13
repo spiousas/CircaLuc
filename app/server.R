@@ -222,7 +222,7 @@ shinyServer(function(session, input, output) {
   smoothed.df.plot <- reactive({ 
     
     smoothed.df.continuous <- weighted.df() %>% 
-      group_by(well, section) %>% # Only grouping by well for detrending and smoothing
+      group_by(well) %>% # Only grouping by well for detrending and smoothing
       mutate(
         lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
         lumin_smoothed = gsignal::conv(lumin_detrended,
