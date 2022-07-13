@@ -35,7 +35,7 @@ shinyUI(fluidPage(
   useShinyjs(),
   
   # Application title ####
-  titlePanel(paste0("CircaLuc v0.3 ", emo::ji("clock"))),
+  titlePanel(paste0("CircaLuc v0.4 ", emo::ji("clock"))),
   
   # Sidebar ####
   sidebarLayout(
@@ -66,14 +66,14 @@ shinyUI(fluidPage(
                           c("linear", "log2", "log10"),
                           width = 180)),
               column(width = 4,
-                     selectInput("group", "Group:", 
+                     selectInput("raw_group", "Group:", 
                                  multiple = FALSE,
                                  choices = "",
                                  selected = "",
                                  width = 180)),
               column(width = 4,
-                     selectInput("well", "Well(s):", 
-                                 multiple = TRUE,
+                     selectInput("raw_well", "Well(s):", 
+                                 multiple = FALSE,
                                  choices = "",
                                  selected = "",
                                  width = 180))
@@ -152,15 +152,23 @@ shinyUI(fluidPage(
                                selected = "Light")
             )),
           fluidRow(
-            h3("Plotting preferences:"),
+            h3("Plotting group means:"),
             column(width = 4,
-                 selectInput("section_preprocessed", "Plot section:",
+                 selectInput("section_grouped_preprocessed", "Plot section:",
                              multiple = TRUE,
                              c("LD", "DD"),
                              selected = c("LD", "DD"))
                  ),
+            column(width = 8,
+                   selectInput("preprocessed_grouped_group", "Group:", 
+                               multiple = TRUE,
+                               choices = "",
+                               selected = "",
+                               width = 400)
+                   )),
+          fluidRow(
             column(width = 4,
-                 selectInput("filter_signal", 
+                 selectInput("preprocessed_grouped_well", 
                              multiple = FALSE,
                              "Select what to plot*:", 
                              c("All the wells" = "all",
@@ -168,19 +176,65 @@ shinyUI(fluidPage(
                                "Only rhythmic" = "only_rhythm",
                                "Only entrained" = "only_entrained"),
                              selected = c("All the wells"))
-          )),
+          ),
+          column(width = 4,
+                 selectInput("preprocessed_sd", "Plot SD band:", 
+                             multiple = FALSE,
+                             choices = c("yes", "no"),
+                             selected = "yes",
+                             width = 180)
+          )
+            ),
           fluidRow(
             br(),
-            plotOutput("detrendedPlot"),
+            plotOutput("detrended_group_Plot"),
+            br(),
+            column(width = 3,
+                   downloadButton("detrendedDownload_Plot", HTML("Download<br/>Plot"))
+                   ),
+            column(width = 2,
+                   numericInput("detrended_Plot_W","Width (cm):", 20,
+                                min = 1, 
+                                max = 100)
+                   ),
+            column(width = 2,
+                   numericInput("detrended_Plot_H","Height (cm):", 10,
+                                min = 1, 
+                                max = 100)
+            ),
+            column(width = 2,
+                   numericInput("detrended_Plot_DPI","DPI:", 300,
+                                min = 1, 
+                                max = 3000)
+            )
+          ),
+          fluidRow(
+            h3("Plotting individual wells for a given group:"),
+            column(width = 4,
+                   selectInput("section_indiv_preprocessed", "Plot section:",
+                               multiple = TRUE,
+                               c("LD", "DD"),
+                               selected = c("LD", "DD"))
+            ),
+            column(width = 4,
+                   selectInput("preprocessed_indiv_group", "Group:", 
+                               multiple = FALSE,
+                               choices = "",
+                               selected = "",
+                               width = 400)
+            )),
+          fluidRow(
+            br(),
+            plotOutput("detrended_indiv_Plot"),
             br(),
             column(width = 3,
                    downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
-                   ),
+            ),
             column(width = 2,
                    numericInput("detrendedPlot_W","Width (cm):", 20,
                                 min = 1, 
                                 max = 100)
-                   ),
+            ),
             column(width = 2,
                    numericInput("detrendedPlot_H","Height (cm):", 10,
                                 min = 1, 
