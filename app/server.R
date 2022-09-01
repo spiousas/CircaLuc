@@ -180,14 +180,12 @@ shinyServer(function(session, input, output) {
                    color = input$MeanRawColor,
                    geom = "line") +
       labs(x = "Time (h)",
-           y = "Luminescence (RLU/min)",
-           title = "Luminescence",
-           subtitle = "Individual wells + mean") +
+           y = "Luminescence (RLU/min)") +
       scale_y_continuous(labels = scientific,
                          trans = if_else(input$raw_y_scale == "linear", 
                                          "identity",
                                          input$raw_y_scale)) +
-      scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime), input$ZTDD, 12),
+      scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime)-1, input$ZTDD, 12),
                          limits = c(min(data.df.plot$ZTTime)-1, input$ZTDD+1)) +
       theme(legend.position = "none",
             plot.title.position = "plot") 
@@ -352,9 +350,7 @@ shinyServer(function(session, input, output) {
                  size = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
-           title = "Detrended luminescence",
-           color = NULL,
-           subtitle = "Individual wells + mean") +
+           color = NULL) +
       scale_colour_viridis(discrete = TRUE) +
       scale_fill_viridis(discrete = TRUE, guide = 'none') +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
@@ -450,9 +446,7 @@ shinyServer(function(session, input, output) {
                  size = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
-           title = "Detrended luminescence",
-           color = NULL,
-           subtitle = "Individual wells + mean") +
+           color = NULL) +
       scale_colour_viridis(discrete = TRUE) +
       scale_fill_viridis(discrete = TRUE, guide = 'none') +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),

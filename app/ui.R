@@ -79,6 +79,7 @@ shinyUI(fluidPage(
                                  width = 180))
             ), 
             fluidRow(
+              "Luminescence (individual wells + mean)",
               br(),
               plotOutput("rawPlot"),
               br(),
@@ -186,7 +187,7 @@ shinyUI(fluidPage(
           )
             ),
           fluidRow(
-            br(),
+            "Detrended luminescence (group means)",
             plotOutput("detrended_group_Plot"),
             br(),
             column(width = 3,
@@ -224,6 +225,7 @@ shinyUI(fluidPage(
                                width = 400)
             )),
           fluidRow(
+            "Detrended luminescence for a given group (individual wells + group mean)",
             br(),
             plotOutput("detrended_indiv_Plot"),
             br(),
