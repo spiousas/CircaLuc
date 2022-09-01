@@ -212,7 +212,7 @@ shinyServer(function(session, input, output) {
                      Ys),
         lumin_weighted = lumin / Ys,
         section = ifelse(
-          ZTTime >= input$ZTcorte & ZTTime <= input$ZTLD,
+          ZTTime >= input$ZTcorte & ZTTime < input$ZTLD,
           "LD",
           ifelse(ZTTime > input$ZTLD &
                    ZTTime <= input$ZTDD, "DD", "NonU")
@@ -569,7 +569,7 @@ shinyServer(function(session, input, output) {
              rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$RpassDD), 
                               "yes!", "no"),
              entrained = if_else((rhythm=="yes!") & (abs(acro_24[section=="DD"]-acro_24[section=="LD"]) < input$phasepass), 
-                                                "yes!", "no") 
+                              "yes!", "no") 
       ) %>%
       ungroup()
   })
@@ -891,14 +891,14 @@ shinyServer(function(session, input, output) {
   # Detrended plot
   output$detrendedDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("detrendedPlot-", Sys.Date(), ".png"))
+      here(paste0("detrendedGroupedPlot-", Sys.Date(), ".png"))
       },
     content = function(file){
       ggsave(file, 
              width = input$detrendedPlot_W,
              height = input$detrendedPlot_H,
              dpi = input$detrendedPlot_DPI,
-             plot = data_detrendedPlot())
+             plot = detrended_grouped_Plot())
     }
   )
   
@@ -912,7 +912,7 @@ shinyServer(function(session, input, output) {
              width = input$detrendedPlot_W,
              height = input$detrendedPlot_H,
              dpi = input$detrendedPlot_DPI,
-             plot = data_detrendedPlot())
+             plot = detrended_indiv_Plot())
     }
   )
   

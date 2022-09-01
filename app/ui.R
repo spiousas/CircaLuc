@@ -190,7 +190,7 @@ shinyUI(fluidPage(
             plotOutput("detrended_group_Plot"),
             br(),
             column(width = 3,
-                   downloadButton("detrendedDownload_Plot", HTML("Download<br/>Plot"))
+                   downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
                    ),
             column(width = 2,
                    numericInput("detrended_Plot_W","Width (cm):", 20,
@@ -228,7 +228,7 @@ shinyUI(fluidPage(
             plotOutput("detrended_indiv_Plot"),
             br(),
             column(width = 3,
-                   downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
+                   downloadButton("detrendedDownload_indiv_Plot", HTML("Download<br/>Plot"))
             ),
             column(width = 2,
                    numericInput("detrendedPlot_W","Width (cm):", 20,
