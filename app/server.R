@@ -48,7 +48,9 @@ shinyServer(function(session, input, output) {
                  names_to = "well",
                  values_to = "lumin") %>%
     mutate(well = str_trim(well)) %>%
-    group_by(well) %>%
+    mutate(well = if_else(str_detect(well, "-"), well, paste0("GroupA-", well))) %>%
+    separate(well, c("group", "well"), sep = "-") %>%
+    group_by(group, well) %>%
     summarise(ZTTime = ZTTime[1:length(na.trim(lumin))],
               lumin = na.trim(lumin)) %>% # Clean trailing NAs in Lumin
     mutate(
@@ -61,15 +63,62 @@ shinyServer(function(session, input, output) {
     )
   })
   
+  ## ├Filter the data ####
   observe({
     updateSelectInput(
       session,
-      "well",
+      "filter_raw_data",
+      "Well(s) to keep:", 
+      choices = as.character(unique(data.df()$well)),
+      selected = as.character(unique(data.df()$well))
+    )
+  })
+  
+  data.df_filtered <- reactive({
+    data.df() %>% 
+      dplyr::filter(well %in% input$filter_raw_data)
+  })
+  
+  ## ├Set up all the input options (wells and groups) ####
+  observe({
+    updateSelectInput(
+      session,
+      "raw_group",
+      "Group:",
+      choices = as.character(unique(data.df_filtered()$group))
+    )
+  })
+  
+  observe({
+    updateSelectInput(
+      session,
+      "preprocessed_grouped_group",
+      "Group:",
+      choices = as.character(unique(data.df_filtered()$group)),
+      selected = as.character(unique(data.df_filtered()$group))
+    )
+  })
+  
+  observe({
+    updateSelectInput(
+      session,
+      "preprocessed_indiv_group",
+      "Group:",
+      choices = as.character(unique(data.df_filtered()$group)),
+      selected = as.character(unique(data.df_filtered()$group)[1])
+    )
+  })
+  
+  observe({
+    updateSelectInput(
+      session,
+      "raw_well",
       "Well(s):",
       choices = list(
-        `All the wells` = "all",
-        `Mean` = "mean",
-        `Individual wells` = as.character(unique(data.df()$well))
+        `All in the group` = "all",
+        `Individual wells` = as.character(unique(data.df_filtered() %>% 
+                                                   dplyr::filter(group==input$raw_group) %>% 
+                                                   pull(well)))
       ),
       selected = "all"
     )
@@ -86,12 +135,11 @@ shinyServer(function(session, input, output) {
                    "Only synchronized" = "only_synch",
                    "Only rhythmic" = "only_rhythm",
                    "Only entrained" = "only_entrained"),
-        `Individual wells` = as.character(unique(data.df()$well))
+        `Individual wells` = as.character(unique(data.df_filtered()$well))
       ),
       selected = "all"
     )
   })
-  
   
   observe({
     updateSelectInput(
@@ -99,24 +147,20 @@ shinyServer(function(session, input, output) {
       "well_cosinor",
       "Well to plot:",
       choices = list(
-        `Individual wells` = as.character(unique(data.df()$well))
+        `Individual wells` = as.character(unique(data.df_filtered()$well))
       ),
-      selected = as.character(unique(data.df()$well))[1]
+      selected = as.character(unique(data.df_filtered()$well))[1]
     )
   })
   
   # Raw data plot ####
-  
   data_rawPlot <- reactive({
     
-    data.df.plot <- data.df() %>%
-      group_by(ZTTime) %>%
-      summarise(lumin = mean(lumin)) %>%
-      mutate(well = "mean") %>%
-      rbind(data.df() %>% select(well, ZTTime, lumin))
+    data.df.plot <- data.df_filtered() %>% 
+      dplyr::filter(group %in% input$raw_group)
     
-    if (!("all" %in% input$well)) {
-      data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$well)
+    if (!("all" %in% input$raw_well)) {
+      data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$raw_well)
     }
     
     data.df.plot %>%
@@ -128,15 +172,15 @@ shinyServer(function(session, input, output) {
                xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
                                                input$LD_period,input$LD_period/2),
                           input$ZTLD,input$LD_period), 
-               ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
-               ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
+               ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]), 
+               ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]),
                fill = input$DarkShadeColor,
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD, 
                xmax = input$ZTDD, 
-               ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$well]), 
-               ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$well]),
+               ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]), 
+               ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]),
                fill = input$DarkShadeColor,
                alpha = .2) +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
@@ -147,19 +191,18 @@ shinyServer(function(session, input, output) {
                  size = 1) +
       geom_line(aes(group = well),
                 size = .5,
-                color = input$IndividualRawColor) +
+                color = input$IndividualRawColor,
+                alpha = .5) +
       stat_summary(size = 1,
                    color = input$MeanRawColor,
                    geom = "line") +
       labs(x = "Time (h)",
-           y = "Luminescence (RLU/min)",
-           title = "Luminescence",
-           subtitle = "Individual wells + mean") +
+           y = "Luminescence (RLU/min)") +
       scale_y_continuous(labels = scientific,
                          trans = if_else(input$raw_y_scale == "linear", 
                                          "identity",
                                          input$raw_y_scale)) +
-      scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime), input$ZTDD, 12),
+      scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime)-1, input$ZTDD, 12),
                          limits = c(min(data.df.plot$ZTTime)-1, input$ZTDD+1)) +
       theme(legend.position = "none",
             plot.title.position = "plot") 
@@ -173,7 +216,7 @@ shinyServer(function(session, input, output) {
   # Processed data ####
   ## ├Weighting and  cutting in sections ####
   weighted.df <- reactive({
-    data.df() %>%
+    data.df_filtered() %>%
       group_by(well) %>%
       mutate(
         Ys = gsignal::conv(abs(lumin),
@@ -184,7 +227,7 @@ shinyServer(function(session, input, output) {
                      Ys),
         lumin_weighted = lumin / Ys,
         section = ifelse(
-          ZTTime >= input$ZTcorte & ZTTime <= input$ZTLD,
+          ZTTime >= input$ZTcorte & ZTTime < input$ZTLD,
           "LD",
           ifelse(ZTTime > input$ZTLD &
                    ZTTime <= input$ZTDD, "DD", "NonU")
@@ -220,61 +263,55 @@ shinyServer(function(session, input, output) {
                                        shape = "same")
       ) %>%
       select(-c(Ys, lumin_weighted)) %>%
-      ungroup() 
-    
-    smoothed.df.continuous %>%
-      group_by(ZTTime, section) %>%
-      summarise(lumin_se = sd(lumin_smoothed)/sqrt(length(unique(smoothed.df()$well))),
-                lumin_smoothed = mean(lumin_smoothed)) %>%
-      mutate(well = "mean") %>%
-      bind_rows(smoothed.df.continuous %>% select(well, ZTTime, lumin_smoothed, section))
-  })
-  
-  ## ├Detrended plot ####
-  data_detrendedPlot <- reactive({
-    
-    smoothed.df.plot <- smoothed.df.plot() %>% 
+      ungroup() %>%
       left_join(cosinor.df() %>% select(c("well", "synch", "rhythm","entrained")), by = "well") 
     
-    smoothed.df.plot <- if (input$filter_signal == "only_synch") {
-      smoothed.df.plot %>% dplyr::filter(synch == "yes!")  
-      } else if (input$filter_signal == "only_rhythm") {
-        smoothed.df.plot %>% dplyr::filter(rhythm == "yes!")  
-      } else if (input$filter_signal == "only_entrained") {
-        smoothed.df.plot %>% dplyr::filter(entrained == "yes!")  
-      } else {
-        smoothed.df.plot
-      }
+    smoothed.df.continuous <- if (input$preprocessed_grouped_well == "only_synch") {
+         smoothed.df.continuous %>% dplyr::filter(synch == "yes!")
+       } else if (input$preprocessed_grouped_well == "only_rhythm") {
+         smoothed.df.continuous %>% dplyr::filter(rhythm == "yes!")
+       } else if (input$preprocessed_grouped_well == "only_entrained") {
+         smoothed.df.continuous %>% dplyr::filter(entrained == "yes!")
+       } else {
+         smoothed.df.continuous
+       }
     
-    # Filtering and gray rectangles limits
-    if (!("all" %in% input$well)) {
-      smoothed.df.plot <- smoothed.df.plot %>% dplyr::filter(well %in% input$well)
-      min_lumin <- min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed])
-      max_lumin <- max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$well %in% input$well & smoothed.df.plot$section %in% input$section_preprocessed])
-    } else {
-      min_lumin <- min(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$section %in% input$section_preprocessed])
-      max_lumin <- max(smoothed.df.plot$lumin_smoothed[smoothed.df.plot$section %in% input$section_preprocessed])
-    }
+    smoothed.df.continuous %>%
+      group_by(ZTTime, section, group) %>%
+      summarise(lumin_sd = sd(lumin_smoothed),
+                lumin_smoothed = mean(lumin_smoothed)) %>%
+      mutate(well = "mean") %>%
+      bind_rows(smoothed.df.continuous %>% select(well, ZTTime, lumin_smoothed, section, group))
+  })
+  
+  ## ├Detrended group plot ####
+  detrended_grouped_Plot <- reactive({
     
-    ymin_rect <- min_lumin - abs(min_lumin-max_lumin)*.1
-    ymax_rect <- max_lumin + abs(min_lumin-max_lumin)*.1
-    ymax_label <-min_lumin - abs(min_lumin-max_lumin)*.05
+    smoothed_data <- smoothed.df.plot() %>%
+      dplyr::filter((section %in% input$section_grouped_preprocessed)) %>%
+      dplyr::filter(group %in% input$preprocessed_grouped_group) %>%
+      dplyr::filter(well == "mean")
     
-    # Creates geom_ribbon() if the selected well is "mean"
-    if (input$well == "mean") {
-      extra_plots <- list(geom_ribbon(aes(ymin = lumin_smoothed - lumin_se,
-                                          ymax = lumin_smoothed + lumin_se),
-                                      alpha = .3,
-                                      color = NA))
+    range_lumin <- range(smoothed_data %>% pull(lumin_smoothed))
+    
+    ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.1
+    ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.1
+    ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.05
+    
+    # Grouped plot
+    # Creates geom_ribbon() if "yes" is selected in "Plot SD band:"
+    if (input$preprocessed_sd == "yes") {
+      extra_plots <- list(geom_ribbon(aes(ymin = lumin_smoothed - lumin_sd,
+                                          ymax = lumin_smoothed + lumin_sd),
+                                      color = NA,
+                                      alpha = .3))
     } else {
       extra_plots <- list()
     }
     
-    # Plot
-    smoothed.df.plot %>%
-      dplyr::filter((section %in% input$section_preprocessed)) %>%
+    smoothed_data %>%
       drop_na(lumin_smoothed) %>%
-      ggplot(aes(x = ZTTime, y = lumin_smoothed)) +
+      ggplot(aes(x = ZTTime, y = lumin_smoothed, color = group, fill = group)) +
       annotate("rect", 
                xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
                                                input$LD_period/2,0),
@@ -319,38 +356,128 @@ shinyServer(function(session, input, output) {
                ymin = ymin_rect,
                ymax = ymax_label,
                fill = input$DarkColor) +
+      geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
+                 size = .5, 
+                 color = "gray70") +
       extra_plots +
+      geom_line(size = 1,
+                alpha = .8) +
+      geom_vline(xintercept = input$ZTLD,
+                 linetype = "dashed",
+                 size = 1) +
+      labs(x = "Time (h)",
+           y = "Detrended luminescence",
+           color = NULL) +
+      scale_colour_viridis(discrete = TRUE) +
+      scale_fill_viridis(discrete = TRUE, guide = 'none') +
+      scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
+                         limits = c(input$ZTcorte-1, input$ZTDD+1)) +
+      scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
+      coord_cartesian(expand = FALSE,
+                      clip = 'off') +
+      theme(legend.position = "bottom",
+            plot.title.position = "plot") 
+    })
+  
+    output$detrended_group_Plot <- renderPlot({detrended_grouped_Plot()}, 
+                                            height = 400, 
+                                            width = 600)
+  
+    ## ├Detrended indiv plot ####
+    detrended_indiv_Plot <- reactive({
+      
+      smoothed_data <- smoothed.df.plot() %>%
+        dplyr::filter((section %in% input$section_indiv_preprocessed)) %>%
+        dplyr::filter(group %in% input$preprocessed_indiv_group) %>%
+        dplyr::filter(well != "mean")
+      
+      range_lumin <- range(smoothed_data %>% pull(lumin_smoothed))
+      
+      ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.1
+      ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.1
+      ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.05
+      
+      # Individual plot
+
+    smoothed_data %>%
+      dplyr::filter((section %in% input$section_indiv_preprocessed)) %>%
+      drop_na(lumin_smoothed) %>%
+      ggplot(aes(x = ZTTime, y = lumin_smoothed, color = group, fill = group)) +
+      annotate("rect", 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
+               ymin = ymin_rect,
+               ymax = ymax_rect,
+               fill = input$DarkShadeColor,
+               alpha = .2) +
+      annotate("rect", 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2,0),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period,input$LD_period/2),
+                          input$ZTLD,input$LD_period), 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = input$DarkColor) +
+      annotate("rect", 
+               xmin = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               0, input$LD_period/2),
+                          input$ZTLD-1,input$LD_period), 
+               xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
+                                               input$LD_period/2, input$LD_period),
+                          input$ZTLD,input$LD_period), 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = input$LightColor) +
+      annotate("rect",
+               xmin = input$ZTLD, 
+               xmax = input$ZTDD, 
+               ymin = ymin_rect,
+               ymax = ymax_rect,
+               fill = input$DarkShadeColor,
+               alpha = .2) +
+      annotate("rect",
+               xmin = input$ZTLD, 
+               xmax = input$ZTDD, 
+               ymin = ymin_rect,
+               ymax = ymax_label,
+               fill = input$DarkColor) +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
                  size = .5, 
                  color = "gray70") +
       geom_line(aes(group = well),
-                size = .5,
-                color = input$IndividualProcessedColor) +
+                size = 1,
+                alpha = .5, 
+                color = "gray50") +
       stat_summary(size = 1,
                 color = input$MeanProcessedColor,
-                geom = "line", 
+                geom = "line",
                 fun.data = mean_se) +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
                  size = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
-           title = "Detrended luminescence",
-           subtitle = "Individual wells + mean") +
+           color = NULL) +
       scale_colour_viridis(discrete = TRUE) +
+      scale_fill_viridis(discrete = TRUE, guide = 'none') +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                          limits = c(input$ZTcorte-1, input$ZTDD+1)) +
       scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
       coord_cartesian(expand = FALSE,
                       clip = 'off') +
-      theme(legend.position = "none",
+      theme(legend.position = "bottom",
             plot.title.position = "plot") 
-    
   })
-  
-  output$detrendedPlot <- renderPlot({data_detrendedPlot()}, 
-                                     height = 400, 
-                                     width = 600)
+
+  output$detrended_indiv_Plot <- renderPlot({detrended_indiv_Plot()}, 
+                                            height = 400, 
+                                            width = 600)
   
   # Periods ####
   ## ├Period estimation ####
@@ -368,7 +495,7 @@ shinyServer(function(session, input, output) {
                                                    to_freq = 1/input$min_period,
                                                    oversampling_freq = input$oversampling,
                                                    method = method,
-                                                   period24 = input$LD_period))) %>%
+                                                   period24 = if_else(section=="LD", input$fixed_period_LD, input$fixed_period_DD)))) %>%
       select(-data) %>%
       unnest(c(period))
   })
@@ -420,7 +547,7 @@ shinyServer(function(session, input, output) {
                       (ZTTime < if_else(input$fit_length_cosinor==0, 
                                         input$ZTDD, 
                                         input$ZTLD + input$fit_length_cosinor))) %>% # Only fits the first fit_length_cosinor hs of DD
-      group_by(well, section) %>% 
+      group_by(well, section, group) %>% 
       mutate(ZTTime = if_else(section == "LD", 
                               ZTTime - input$ZTcorte,
                               ZTTime - input$ZTLD)) %>%
@@ -453,7 +580,7 @@ shinyServer(function(session, input, output) {
              rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$RpassDD), 
                               "yes!", "no"),
              entrained = if_else((rhythm=="yes!") & (abs(acro_24[section=="DD"]-acro_24[section=="LD"]) < input$phasepass), 
-                                                "yes!", "no") 
+                              "yes!", "no") 
       ) %>%
       ungroup()
   })
@@ -472,7 +599,7 @@ shinyServer(function(session, input, output) {
     }
     
     cosinor.df_circmeans %>% 
-      group_by(section) %>% 
+      group_by(section, group) %>% 
       nest() %>%
       mutate(circ_acro = map(data, ~circular(.x$acro_24, 
                                              units = "hours", 
@@ -619,6 +746,16 @@ shinyServer(function(session, input, output) {
     }
   })
   
+  ## ├Figure dimensions ####
+  fig_height <- reactive({300*((length(unique(cosinor.df()$group))-1)%/%4+1)})
+  fig_width <- reactive({
+    if (length(unique(cosinor.df()$group))<4) {
+      600*length(unique(cosinor.df()$group)) / 4
+    } else {
+      600
+    }
+    })
+  
   ## ├Period ####
   data_periodsPlot <- reactive({
 
@@ -636,6 +773,7 @@ shinyServer(function(session, input, output) {
                    alpha = 1,
                    width = .2) +
       geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
+      facet_wrap(.~group, ncol = 4) +
       labs(x = NULL,
            y = "Period (h)",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
@@ -645,6 +783,10 @@ shinyServer(function(session, input, output) {
       scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none")
   })
+  
+  output$periodsPlot <- renderPlot({ data_periodsPlot() },
+                                   height = function(){fig_height()}, 
+                                   width = function(){fig_width()}  )
   
   ## ├Amplitude ####
   data_ampsPlot <- reactive({
@@ -662,6 +804,7 @@ shinyServer(function(session, input, output) {
                    geom = "errorbar", 
                    alpha = 1,
                    width = .2) +
+      facet_wrap(.~group, ncol = 4) +
       labs(x = NULL,
            y = "Fitted amplitude",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
@@ -670,6 +813,10 @@ shinyServer(function(session, input, output) {
       scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none")
   })
+  
+  output$ampsPlot <- renderPlot({ data_ampsPlot() },
+                                   height = function(){fig_height()}, 
+                                   width = function(){fig_width()} )
   
   ## ├Polar acrophase ####
   data_acrospolarPlot <- reactive({
@@ -694,6 +841,7 @@ shinyServer(function(session, input, output) {
         size = 1,
         arrow = arrow(length = unit(0.05, "npc"))
       ) +
+      facet_wrap(.~group, ncol = 3) +
       labs(x = NULL,
            y = NULL,
            color = "Section",
@@ -709,13 +857,9 @@ shinyServer(function(session, input, output) {
             axis.text.x = element_text(size = 12))
   })
   
-  data_statPlot <- reactive({ data_periodsPlot() + data_ampsPlot() + data_acrospolarPlot() + 
-      plot_layout(widths = c(1, 1, 3)) 
-    })
-  
-  output$statPlot <- renderPlot({ data_statPlot() },
-      height = 300, 
-      width = 600 )
+  output$acrosPlot <- renderPlot({ data_acrospolarPlot() },
+                                height = function(){fig_height()}, 
+                                width = function(){fig_width()} )
   
   ## ├Rayleigh table ####
   output$table_rayleigh <- renderDataTable(
@@ -775,14 +919,28 @@ shinyServer(function(session, input, output) {
   # Detrended plot
   output$detrendedDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("detrendedPlot-", Sys.Date(), ".png"))
+      here(paste0("detrendedGroupedPlot-", Sys.Date(), ".png"))
       },
     content = function(file){
       ggsave(file, 
              width = input$detrendedPlot_W,
              height = input$detrendedPlot_H,
              dpi = input$detrendedPlot_DPI,
-             plot = data_detrendedPlot())
+             plot = detrended_grouped_Plot())
+    }
+  )
+  
+  # Detrended plot
+  output$detrendedDownload_indiv_Plot <- downloadHandler(
+    filename = function(){
+      here(paste0("detrended_indiv_Plot-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$detrendedPlot_W,
+             height = input$detrendedPlot_H,
+             dpi = input$detrendedPlot_DPI,
+             plot = detrended_indiv_Plot())
     }
   )
   
@@ -800,17 +958,45 @@ shinyServer(function(session, input, output) {
     }
   )
   
-  # Stat plots
-  output$statDownloadPlot <- downloadHandler(
+  # Periods plots
+  output$periodsPlotDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("statPlots-", Sys.Date(), ".png"))
+      here(paste0("periodsPlots-", Sys.Date(), ".png"))
     },
     content = function(file){
       ggsave(file, 
-             width = input$statPlot_W,
-             height = input$statPlot_H,
-             dpi = input$statPlot_DPI,
-             plot = data_statPlot())
+             width = input$periodsPlot_W,
+             height = input$periodsPlot_H,
+             dpi = input$periodsPlot_DPI,
+             plot = data_periodsPlot())
+    }
+  )
+  
+  # Amplitude plots
+  output$ampsPlotDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$ampsPlot_W,
+             height = input$ampsPlot_H,
+             dpi = input$ampsPlot_DPI,
+             plot = data_ampsPlot())
+    }
+  )
+  
+  # Acrophase plots
+  output$acrosPlotDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$acrosPlot_W,
+             height = input$acrosPlot_H,
+             dpi = input$acrosPlot_DPI,
+             plot = data_acrospolarPlot())
     }
   )
   
