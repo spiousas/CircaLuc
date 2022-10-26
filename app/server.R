@@ -48,6 +48,7 @@ shinyServer(function(session, input, output) {
                  names_to = "well",
                  values_to = "lumin") %>%
     mutate(well = str_trim(well)) %>%
+    mutate(well = if_else(str_detect(well, "-"), well, paste0("GroupA-", well))) %>%
     separate(well, c("group", "well"), sep = "-") %>%
     group_by(group, well) %>%
     summarise(ZTTime = ZTTime[1:length(na.trim(lumin))],
@@ -62,12 +63,29 @@ shinyServer(function(session, input, output) {
     )
   })
   
+  ## ├Filter the data ####
+  observe({
+    updateSelectInput(
+      session,
+      "filter_raw_data",
+      "Well(s) to keep:", 
+      choices = as.character(unique(data.df()$well)),
+      selected = as.character(unique(data.df()$well))
+    )
+  })
+  
+  data.df_filtered <- reactive({
+    data.df() %>% 
+      dplyr::filter(well %in% input$filter_raw_data)
+  })
+  
+  ## ├Set up all the input options (wells and groups) ####
   observe({
     updateSelectInput(
       session,
       "raw_group",
       "Group:",
-      choices = as.character(unique(data.df()$group))
+      choices = as.character(unique(data.df_filtered()$group))
     )
   })
   
@@ -76,8 +94,8 @@ shinyServer(function(session, input, output) {
       session,
       "preprocessed_grouped_group",
       "Group:",
-      choices = as.character(unique(data.df()$group)),
-      selected = as.character(unique(data.df()$group))
+      choices = as.character(unique(data.df_filtered()$group)),
+      selected = as.character(unique(data.df_filtered()$group))
     )
   })
   
@@ -86,8 +104,8 @@ shinyServer(function(session, input, output) {
       session,
       "preprocessed_indiv_group",
       "Group:",
-      choices = as.character(unique(data.df()$group)),
-      selected = as.character(unique(data.df()$group)[1])
+      choices = as.character(unique(data.df_filtered()$group)),
+      selected = as.character(unique(data.df_filtered()$group)[1])
     )
   })
   
@@ -98,14 +116,13 @@ shinyServer(function(session, input, output) {
       "Well(s):",
       choices = list(
         `All in the group` = "all",
-        `Individual wells` = as.character(unique(data.df() %>% 
+        `Individual wells` = as.character(unique(data.df_filtered() %>% 
                                                    dplyr::filter(group==input$raw_group) %>% 
                                                    pull(well)))
       ),
       selected = "all"
     )
   })
-
   
   observe({
     updateSelectInput(
@@ -118,7 +135,7 @@ shinyServer(function(session, input, output) {
                    "Only synchronized" = "only_synch",
                    "Only rhythmic" = "only_rhythm",
                    "Only entrained" = "only_entrained"),
-        `Individual wells` = as.character(unique(data.df()$well))
+        `Individual wells` = as.character(unique(data.df_filtered()$well))
       ),
       selected = "all"
     )
@@ -130,17 +147,17 @@ shinyServer(function(session, input, output) {
       "well_cosinor",
       "Well to plot:",
       choices = list(
-        `Individual wells` = as.character(unique(data.df()$well))
+        `Individual wells` = as.character(unique(data.df_filtered()$well))
       ),
-      selected = as.character(unique(data.df()$well))[1]
+      selected = as.character(unique(data.df_filtered()$well))[1]
     )
   })
   
   # Raw data plot ####
-  
   data_rawPlot <- reactive({
     
-    data.df.plot <- data.df() %>% dplyr::filter(group %in% input$raw_group)
+    data.df.plot <- data.df_filtered() %>% 
+      dplyr::filter(group %in% input$raw_group)
     
     if (!("all" %in% input$raw_well)) {
       data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$raw_well)
@@ -199,7 +216,7 @@ shinyServer(function(session, input, output) {
   # Processed data ####
   ## ├Weighting and  cutting in sections ####
   weighted.df <- reactive({
-    data.df() %>%
+    data.df_filtered() %>%
       group_by(well) %>%
       mutate(
         Ys = gsignal::conv(abs(lumin),
@@ -478,7 +495,7 @@ shinyServer(function(session, input, output) {
                                                    to_freq = 1/input$min_period,
                                                    oversampling_freq = input$oversampling,
                                                    method = method,
-                                                   period24 = input$LD_period))) %>%
+                                                   period24 = if_else(section=="LD", input$fixed_period_LD, input$fixed_period_DD)))) %>%
       select(-data) %>%
       unnest(c(period))
   })
@@ -530,7 +547,7 @@ shinyServer(function(session, input, output) {
                       (ZTTime < if_else(input$fit_length_cosinor==0, 
                                         input$ZTDD, 
                                         input$ZTLD + input$fit_length_cosinor))) %>% # Only fits the first fit_length_cosinor hs of DD
-      group_by(well, section) %>% 
+      group_by(well, section, group) %>% 
       mutate(ZTTime = if_else(section == "LD", 
                               ZTTime - input$ZTcorte,
                               ZTTime - input$ZTLD)) %>%
@@ -582,7 +599,7 @@ shinyServer(function(session, input, output) {
     }
     
     cosinor.df_circmeans %>% 
-      group_by(section) %>% 
+      group_by(section, group) %>% 
       nest() %>%
       mutate(circ_acro = map(data, ~circular(.x$acro_24, 
                                              units = "hours", 
@@ -729,6 +746,16 @@ shinyServer(function(session, input, output) {
     }
   })
   
+  ## ├Figure dimensions ####
+  fig_height <- reactive({300*((length(unique(cosinor.df()$group))-1)%/%4+1)})
+  fig_width <- reactive({
+    if (length(unique(cosinor.df()$group))<4) {
+      600*length(unique(cosinor.df()$group)) / 4
+    } else {
+      600
+    }
+    })
+  
   ## ├Period ####
   data_periodsPlot <- reactive({
 
@@ -746,6 +773,7 @@ shinyServer(function(session, input, output) {
                    alpha = 1,
                    width = .2) +
       geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
+      facet_wrap(.~group, ncol = 4) +
       labs(x = NULL,
            y = "Period (h)",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
@@ -755,6 +783,10 @@ shinyServer(function(session, input, output) {
       scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none")
   })
+  
+  output$periodsPlot <- renderPlot({ data_periodsPlot() },
+                                   height = function(){fig_height()}, 
+                                   width = function(){fig_width()}  )
   
   ## ├Amplitude ####
   data_ampsPlot <- reactive({
@@ -772,6 +804,7 @@ shinyServer(function(session, input, output) {
                    geom = "errorbar", 
                    alpha = 1,
                    width = .2) +
+      facet_wrap(.~group, ncol = 4) +
       labs(x = NULL,
            y = "Fitted amplitude",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
@@ -780,6 +813,10 @@ shinyServer(function(session, input, output) {
       scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none")
   })
+  
+  output$ampsPlot <- renderPlot({ data_ampsPlot() },
+                                   height = function(){fig_height()}, 
+                                   width = function(){fig_width()} )
   
   ## ├Polar acrophase ####
   data_acrospolarPlot <- reactive({
@@ -804,6 +841,7 @@ shinyServer(function(session, input, output) {
         size = 1,
         arrow = arrow(length = unit(0.05, "npc"))
       ) +
+      facet_wrap(.~group, ncol = 3) +
       labs(x = NULL,
            y = NULL,
            color = "Section",
@@ -819,13 +857,9 @@ shinyServer(function(session, input, output) {
             axis.text.x = element_text(size = 12))
   })
   
-  data_statPlot <- reactive({ data_periodsPlot() + data_ampsPlot() + data_acrospolarPlot() + 
-      plot_layout(widths = c(1, 1, 3)) 
-    })
-  
-  output$statPlot <- renderPlot({ data_statPlot() },
-      height = 300, 
-      width = 600 )
+  output$acrosPlot <- renderPlot({ data_acrospolarPlot() },
+                                height = function(){fig_height()}, 
+                                width = function(){fig_width()} )
   
   ## ├Rayleigh table ####
   output$table_rayleigh <- renderDataTable(
@@ -924,17 +958,45 @@ shinyServer(function(session, input, output) {
     }
   )
   
-  # Stat plots
-  output$statDownloadPlot <- downloadHandler(
+  # Periods plots
+  output$periodsPlotDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("statPlots-", Sys.Date(), ".png"))
+      here(paste0("periodsPlots-", Sys.Date(), ".png"))
     },
     content = function(file){
       ggsave(file, 
-             width = input$statPlot_W,
-             height = input$statPlot_H,
-             dpi = input$statPlot_DPI,
-             plot = data_statPlot())
+             width = input$periodsPlot_W,
+             height = input$periodsPlot_H,
+             dpi = input$periodsPlot_DPI,
+             plot = data_periodsPlot())
+    }
+  )
+  
+  # Amplitude plots
+  output$ampsPlotDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$ampsPlot_W,
+             height = input$ampsPlot_H,
+             dpi = input$ampsPlot_DPI,
+             plot = data_ampsPlot())
+    }
+  )
+  
+  # Acrophase plots
+  output$acrosPlotDownloadPlot <- downloadHandler(
+    filename = function(){
+      here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+    },
+    content = function(file){
+      ggsave(file, 
+             width = input$acrosPlot_W,
+             height = input$acrosPlot_H,
+             dpi = input$acrosPlot_DPI,
+             plot = data_acrospolarPlot())
     }
   )
   

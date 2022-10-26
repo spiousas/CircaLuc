@@ -35,7 +35,7 @@ shinyUI(fluidPage(
   useShinyjs(),
   
   # Application title ####
-  titlePanel(paste0("CircaLuc v0.4 ", emo::ji("clock"))),
+  titlePanel(paste0("CircaLuc v0.5 ", emo::ji("clock"))),
   
   # Sidebar ####
   sidebarLayout(
@@ -60,6 +60,12 @@ shinyUI(fluidPage(
           # Raw data ####
           "RAW data",
           fluidPage(
+            fluidRow(column(width = 12,
+                            selectInput("filter_raw_data", "Well(s) to keep (only selected wells will be processed further):", 
+                                        multiple = TRUE,
+                                        choices = "",
+                                        selected = "",
+                                        width = 540))),             
             fluidRow(
               column(width = 4,
               selectInput("raw_y_scale", "Luminosity scale:",
@@ -81,7 +87,7 @@ shinyUI(fluidPage(
             fluidRow(
               "Luminescence (individual wells + mean)",
               br(),
-              plotOutput("rawPlot"),
+              plotOutput("rawPlot", height = "auto"),
               br(),
               column(width = 3,
                      downloadButton("rawDownloadPlot", HTML("Download<br/>Plot"))
@@ -188,7 +194,7 @@ shinyUI(fluidPage(
             ),
           fluidRow(
             "Detrended luminescence (group means)",
-            plotOutput("detrended_group_Plot"),
+            plotOutput("detrended_group_Plot", height = "auto"),
             br(),
             column(width = 3,
                    downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
@@ -227,7 +233,7 @@ shinyUI(fluidPage(
           fluidRow(
             "Detrended luminescence for a given group (individual wells + group mean)",
             br(),
-            plotOutput("detrended_indiv_Plot"),
+            plotOutput("detrended_indiv_Plot", height = "auto"),
             br(),
             column(width = 3,
                    downloadButton("detrendedDownload_indiv_Plot", HTML("Download<br/>Plot"))
@@ -278,9 +284,23 @@ shinyUI(fluidPage(
                           )
                  ),
                  fluidRow(
-                   h3("Fitting parameters (LS):")
-                          ),
+                   h3("Fitting parameters")),
                  fluidRow(
+                   h4("24 hs: In case you want to set a fixed period different than 24."),
+                   column(width = 4,
+                          numericInput("fixed_period_LD", "Fixed period for LD (hs):", 24,
+                                       min = 1, 
+                                       max = 200, 
+                                       width = 150)
+                   ),
+                   column(width = 4,
+                          numericInput("fixed_period_DD", "Fixed period for DD (hs):", 24,
+                                       min = 1, 
+                                       max = 200, 
+                                       width = 150)
+                   )),
+                 fluidRow(
+                   h4("LS: Limits and oversampling:"),
                    column(width = 4,
                           numericInput("min_period", "Minimum period (hs):", 20,
                                        min = 1, 
@@ -339,7 +359,7 @@ shinyUI(fluidPage(
           ),
           fluidRow(
             br(),
-            plotOutput("cosinorPlot"),
+            plotOutput("cosinorPlot", height = "auto"),
             br(),
             column(width = 3,
                   downloadButton("cosinorDownloadPlot", HTML("Download<br/>Plot"))
@@ -387,22 +407,67 @@ shinyUI(fluidPage(
                                sep="<br/>"))),
            fluidRow(
              h2("Cosinor fit results"),
-             plotOutput("statPlot"),
+             h3("Periods"),
+             plotOutput("periodsPlot", height = "auto"),
              column(width = 3,
-                    downloadButton("statDownloadPlot", HTML("Download<br/>Plot"))
+                    downloadButton("periodsPlotDownloadPlot", HTML("Download<br/>Plot"))
              ),
              column(width = 2,
-                    numericInput("statPlot_W","Width (cm):", 20,
+                    numericInput("periodsPlot_W","Width (cm):", 20,
                                  min = 1, 
                                  max = 100)
              ),
              column(width = 2,
-                    numericInput("statPlot_H","Height (cm):", 10,
+                    numericInput("periodsPlot_H","Height (cm):", 10,
                                  min = 1, 
                                  max = 100)
              ),
              column(width = 2,
-                    numericInput("statPlot_DPI","DPI:", 300,
+                    numericInput("periodsPlot_DPI","DPI:", 300,
+                                 min = 1, 
+                                 max = 3000)
+             )
+           ),
+           fluidRow(
+             h3("Amplitude"),
+             plotOutput("ampsPlot",height = "auto"),
+             column(width = 3,
+                    downloadButton("ampsPlotDownloadPlot", HTML("Download<br/>Plot"))
+             ),
+             column(width = 2,
+                    numericInput("ampsPlot_W","Width (cm):", 20,
+                                 min = 1, 
+                                 max = 100)
+             ),
+             column(width = 2,
+                    numericInput("ampsPlot_H","Height (cm):", 10,
+                                 min = 1, 
+                                 max = 100)
+             ),
+             column(width = 2,
+                    numericInput("ampsPlot_DPI","DPI:", 300,
+                                 min = 1, 
+                                 max = 3000)
+             )
+           ),
+           fluidRow(
+             h3("Acrophase"),
+             plotOutput("acrosPlot",height = "auto"),
+             column(width = 3,
+                    downloadButton("acrosPlotDownloadPlot", HTML("Download<br/>Plot"))
+             ),
+             column(width = 2,
+                    numericInput("acrosPlot_W","Width (cm):", 20,
+                                 min = 1, 
+                                 max = 100)
+             ),
+             column(width = 2,
+                    numericInput("acrosPlot_H","Height (cm):", 10,
+                                 min = 1, 
+                                 max = 100)
+             ),
+             column(width = 2,
+                    numericInput("acrosPlot_DPI","DPI:", 300,
                                  min = 1, 
                                  max = 3000)
              )
