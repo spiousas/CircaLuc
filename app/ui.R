@@ -200,17 +200,17 @@ shinyUI(fluidPage(
                    downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
                    ),
             column(width = 2,
-                   numericInput("detrended_Plot_W","Width (cm):", 20,
+                   numericInput("detrendedPlot_W","Width (cm):", 20,
                                 min = 1, 
                                 max = 100)
                    ),
             column(width = 2,
-                   numericInput("detrended_Plot_H","Height (cm):", 10,
+                   numericInput("detrendedPlot_H","Height (cm):", 10,
                                 min = 1, 
                                 max = 100)
             ),
             column(width = 2,
-                   numericInput("detrended_Plot_DPI","DPI:", 300,
+                   numericInput("detrendedPlot_DPI","DPI:", 300,
                                 min = 1, 
                                 max = 3000)
             )

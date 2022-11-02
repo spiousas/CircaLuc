@@ -252,9 +252,9 @@ shinyServer(function(session, input, output) {
   })
 
   ## ├Detrended data for plotting ####
-  smoothed.df.plot <- reactive({ 
+  smoothed.df.continuous <- reactive({ 
     
-    smoothed.df.continuous <- weighted.df() %>% 
+    weighted.df() %>% 
       group_by(well) %>% # Only grouping by well for detrending and smoothing
       mutate(
         lumin_detrended = pracma::detrend(lumin_weighted, "linear")[, 1],
@@ -264,24 +264,37 @@ shinyServer(function(session, input, output) {
       ) %>%
       select(-c(Ys, lumin_weighted)) %>%
       ungroup() %>%
-      left_join(cosinor.df() %>% select(c("well", "synch", "rhythm","entrained")), by = "well") 
+      left_join(cosinor.df() %>% select(c("well", "section", "synch", "rhythm","entrained")), 
+                by = c("well", "section"))
     
-    smoothed.df.continuous <- if (input$preprocessed_grouped_well == "only_synch") {
-         smoothed.df.continuous %>% dplyr::filter(synch == "yes!")
+  })
+    
+  smoothed.df.download <- reactive({ 
+    smoothed.df.continuous() %>%
+      group_by(ZTTime, section, group) %>%
+      summarise(lumin_smoothed = mean(lumin_smoothed)) %>%
+      mutate(well = paste0("mean_", group)) %>%
+      select(-group) %>%
+      bind_rows(smoothed.df.continuous() %>% select(well, ZTTime, lumin_smoothed, section))
+  })
+  
+    smoothed.df.plot <- reactive({ 
+    smoothed.df.pre_plot <- if (input$preprocessed_grouped_well == "only_synch") {
+         smoothed.df.continuous() %>% dplyr::filter(synch == "yes!")
        } else if (input$preprocessed_grouped_well == "only_rhythm") {
-         smoothed.df.continuous %>% dplyr::filter(rhythm == "yes!")
+         smoothed.df.continuous() %>% dplyr::filter(rhythm == "yes!")
        } else if (input$preprocessed_grouped_well == "only_entrained") {
-         smoothed.df.continuous %>% dplyr::filter(entrained == "yes!")
+         smoothed.df.continuous() %>% dplyr::filter(entrained == "yes!")
        } else {
-         smoothed.df.continuous
+         smoothed.df.continuous()
        }
     
-    smoothed.df.continuous %>%
+    smoothed.df.pre_plot %>%
       group_by(ZTTime, section, group) %>%
       summarise(lumin_sd = sd(lumin_smoothed),
                 lumin_smoothed = mean(lumin_smoothed)) %>%
       mutate(well = "mean") %>%
-      bind_rows(smoothed.df.continuous %>% select(well, ZTTime, lumin_smoothed, section, group))
+      bind_rows(smoothed.df.continuous() %>% select(well, ZTTime, lumin_smoothed, section, group))
   })
   
   ## ├Detrended group plot ####
@@ -294,8 +307,8 @@ shinyServer(function(session, input, output) {
     
     range_lumin <- range(smoothed_data %>% pull(lumin_smoothed))
     
-    ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.1
-    ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.1
+    ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.2
+    ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.2
     ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.05
     
     # Grouped plot
@@ -885,18 +898,18 @@ shinyServer(function(session, input, output) {
     content = function(file) {
       list_of_sheets <- list("Periods_LD" = periods.df() %>% 
                                dplyr::filter(section == "LD"),
-                             "Periods_DD" = periods.df() %>% 
+                             "Periods_DD" = periods.df() %>%
                                dplyr::filter(section == "DD"),
-                             "Cosinor_LD" = cosinor.df() %>% 
+                             "Cosinor_LD" = cosinor.df() %>%
                                dplyr::filter(section == "LD"),
-                             "Cosinor_DD" = cosinor.df() %>% 
+                             "Cosinor_DD" = cosinor.df() %>%
                                dplyr::filter(section == "DD"),
                              "Circular_means" = circ.means(),
-                             "Smoothed_data" = smoothed.df.plot() %>%
-                               select(-c(lumin_se, section)) %>% 
+                             "Smoothed_data" = smoothed.df.download() %>%
+                               ungroup() %>%
+                               select(-c(section)) %>% 
                                pivot_wider(names_from = well, 
                                            values_from = lumin_smoothed))
-      
       write_xlsx(list_of_sheets, path = file)
     }
   )
@@ -989,7 +1002,7 @@ shinyServer(function(session, input, output) {
   # Acrophase plots
   output$acrosPlotDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+      here(paste0("acophasesPlots-", Sys.Date(), ".png"))
     },
     content = function(file){
       ggsave(file, 
