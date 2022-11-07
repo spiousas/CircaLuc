@@ -9,7 +9,7 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               ggthemes, patchwork)
+               ggthemes, patchwork, ggsci)
 pacman::p_load_gh("emo")
 
 color_choices = list(

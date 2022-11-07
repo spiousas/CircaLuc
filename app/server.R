@@ -772,10 +772,10 @@ shinyServer(function(session, input, output) {
   ## ├Period ####
   data_periodsPlot <- reactive({
 
-    cosinor.df.plot() %>% ggplot(aes(x = section,
+    cosinor.df.plot() %>% ggplot(aes(x = group,
                                    y = period,
-                                   color = section,
-                                   fill = section)) +
+                                   color = group,
+                                   fill = group)) +
       geom_jitter(width = .2,
                   alpha = .2) + 
       stat_summary(fun.data = mean_se,
@@ -786,15 +786,19 @@ shinyServer(function(session, input, output) {
                    alpha = 1,
                    width = .2) +
       geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
-      facet_wrap(.~group, ncol = 4) +
+      facet_grid(factor(section, levels=c('LD', 'DD')) ~ .) +
       labs(x = NULL,
            y = "Period (h)",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
-      scale_x_discrete(limits = c("LD", "DD")) +
+      #scale_x_discrete(limits = c("LD", "DD")) +
       scale_y_continuous(breaks = seq(0, 48, 6)) +
-      scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
-      scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
-      theme(legend.position = "none")
+      # scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      # scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      scale_color_lancet() + 
+      scale_fill_lancet() +
+      theme(legend.position = "none",
+            panel.grid.major.x = element_line(color = "gray90"),
+            axis.text.x = element_text(angle = 45, hjust = 1))
   })
   
   output$periodsPlot <- renderPlot({ data_periodsPlot() },
@@ -804,10 +808,10 @@ shinyServer(function(session, input, output) {
   ## ├Amplitude ####
   data_ampsPlot <- reactive({
     
-    cosinor.df.plot() %>% ggplot(aes(x = section,
+    cosinor.df.plot() %>% ggplot(aes(x = group,
                                 y = amp,
-                                color = section,
-                                fill = section)) +
+                                color = group,
+                                fill = group)) +
       geom_jitter(width = .2,
                   alpha = .2) + 
       stat_summary(fun.data = mean_se,
@@ -817,14 +821,18 @@ shinyServer(function(session, input, output) {
                    geom = "errorbar", 
                    alpha = 1,
                    width = .2) +
-      facet_wrap(.~group, ncol = 4) +
+      facet_grid(factor(section, levels=c('LD', 'DD')) ~ .) +
       labs(x = NULL,
            y = "Fitted amplitude",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
-      scale_x_discrete(limits=c("LD", "DD")) +
-      scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
-      scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
-      theme(legend.position = "none")
+      #scale_x_discrete(limits=c("LD", "DD")) +
+      scale_color_lancet() + 
+      scale_fill_lancet() +
+      #scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      #scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      theme(legend.position = "none",
+            panel.grid.major.x = element_line(color = "gray90"),
+            axis.text.x = element_text(angle = 45, hjust = 1))
   })
   
   output$ampsPlot <- renderPlot({ data_ampsPlot() },
@@ -872,7 +880,7 @@ shinyServer(function(session, input, output) {
   
   output$acrosPlot <- renderPlot({ data_acrospolarPlot() },
                                 height = function(){fig_height()}, 
-                                width = function(){fig_width()} )
+                                width = function(){fig_width()})
   
   ## ├Rayleigh table ####
   output$table_rayleigh <- renderDataTable(
