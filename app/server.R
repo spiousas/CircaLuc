@@ -309,7 +309,7 @@ shinyServer(function(session, input, output) {
     
     ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.2
     ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.2
-    ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.05
+    ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.15
     
     # Grouped plot
     # Creates geom_ribbon() if "yes" is selected in "Plot SD band:"
@@ -381,8 +381,9 @@ shinyServer(function(session, input, output) {
       labs(x = "Time (h)",
            y = "Detrended luminescence",
            color = NULL) +
-      scale_colour_viridis(discrete = TRUE) +
-      scale_fill_viridis(discrete = TRUE, guide = 'none') +
+      scale_color_lancet() + 
+      scale_fill_lancet() +
+      guides(fill = "none") +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                          limits = c(input$ZTcorte-1, input$ZTDD+1)) +
       scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
@@ -477,8 +478,6 @@ shinyServer(function(session, input, output) {
       labs(x = "Time (h)",
            y = "Detrended luminescence",
            color = NULL) +
-      scale_colour_viridis(discrete = TRUE) +
-      scale_fill_viridis(discrete = TRUE, guide = 'none') +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                          limits = c(input$ZTcorte-1, input$ZTDD+1)) +
       scale_y_continuous(limits = c(ymin_rect, ymax_rect)) +
