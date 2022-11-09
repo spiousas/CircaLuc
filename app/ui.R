@@ -190,8 +190,14 @@ shinyUI(fluidPage(
                              choices = c("yes", "no"),
                              selected = "yes",
                              width = 180)
-          )
-            ),
+          ),
+          column(width = 4,
+                 selectInput("GroupColors", 
+                             multiple = FALSE,
+                             "Group colors:", 
+                             c("Lancet", "Nature", "NEJM"),
+                             selected = "Lancet") 
+          )),
           fluidRow(
             "Detrended luminescence (group means)",
             plotOutput("detrended_group_Plot", height = "auto"),

@@ -381,8 +381,7 @@ shinyServer(function(session, input, output) {
       labs(x = "Time (h)",
            y = "Detrended luminescence",
            color = NULL) +
-      scale_color_lancet() + 
-      scale_fill_lancet() +
+      groupcolors_list() +
       guides(fill = "none") +
       scale_x_continuous(breaks = seq(input$ZTcorte, input$ZTDD, 12),
                          limits = c(input$ZTcorte-1, input$ZTDD+1)) +
@@ -768,6 +767,12 @@ shinyServer(function(session, input, output) {
     }
     })
   
+  groupcolors_list <- reactive({ case_when(
+    input$GroupColors == "Lancet" ~ list(scale_color_lancet(), scale_fill_lancet()),
+    input$GroupColors == "Nature" ~ list(scale_color_npg(), scale_fill_npg()),
+    input$GroupColors == "NEJM" ~ list(scale_color_nejm(), scale_fill_nejm()),
+   ) })
+  
   ## ├Period ####
   data_periodsPlot <- reactive({
 
@@ -784,7 +789,7 @@ shinyServer(function(session, input, output) {
                    geom = "errorbar", 
                    alpha = 1,
                    width = .2) +
-      geom_hline(yintercept = 24, color = "black", linetype = "dashed") +
+      geom_hline(yintercept = input$fixed_period_LD, color = "black", linetype = "dashed") +
       facet_grid(factor(section, levels=c('LD', 'DD')) ~ .) +
       labs(x = NULL,
            y = "Period (h)",
@@ -793,8 +798,7 @@ shinyServer(function(session, input, output) {
       scale_y_continuous(breaks = seq(0, 48, 6)) +
       # scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       # scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
-      scale_color_lancet() + 
-      scale_fill_lancet() +
+      groupcolors_list() +
       theme(legend.position = "none",
             panel.grid.major.x = element_line(color = "gray90"),
             axis.text.x = element_text(angle = 45, hjust = 1))
@@ -825,8 +829,7 @@ shinyServer(function(session, input, output) {
            y = "Fitted amplitude",
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
       #scale_x_discrete(limits=c("LD", "DD")) +
-      scale_color_lancet() + 
-      scale_fill_lancet() +
+      groupcolors_list() +
       #scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       #scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none",
