@@ -9,8 +9,11 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               ggthemes, patchwork, ggsci)
-pacman::p_load_gh("emo")
+               ggthemes, patchwork, ggsci, tidymodels)
+pacman::p_load_gh("emo", "pairwiseComparisons")
+
+useShinyjs()
+useSweetAlert()
 
 color_choices = list(
   list(
@@ -32,7 +35,7 @@ color_choices = list(
 )
 
 shinyUI(fluidPage(
-  useShinyjs(),
+  #theme = bslib::bs_theme(bootswatch = "flatly"),
   
   # Application title ####
   titlePanel(paste0("CircaLuc v0.5 ", emo::ji("clock"))),
@@ -60,55 +63,71 @@ shinyUI(fluidPage(
           # Raw data ####
           "RAW data",
           fluidPage(
-            fluidRow(column(width = 12,
-                            selectInput("filter_raw_data", "Well(s) to keep (only selected wells will be processed further):", 
-                                        multiple = TRUE,
-                                        choices = "",
-                                        selected = "",
-                                        width = 540))),             
             fluidRow(
-              column(width = 4,
-              selectInput("raw_y_scale", "Luminosity scale:",
-                          c("linear", "log2", "log10"),
-                          width = 180)),
-              column(width = 4,
-                     selectInput("raw_group", "Group:", 
-                                 multiple = FALSE,
-                                 choices = "",
-                                 selected = "",
-                                 width = 180)),
-              column(width = 4,
-                     selectInput("raw_well", "Well(s):", 
-                                 multiple = FALSE,
-                                 choices = "",
-                                 selected = "",
-                                 width = 180))
-            ), 
-            fluidRow(
-              "Luminescence (individual wells + mean)",
               br(),
+              "<- Please start the analysis by loading data on the lefside panel",
+              br()),
+            fluidRow(
+              h3("Filter unwanted wells:"),
+              column(width = 12,
+                     selectInput("filter_raw_data", "Well(s) to keep (only selected wells will be further processed):", 
+                                 multiple = TRUE,
+                                 choices = "",
+                                 selected = "",
+                                 width = 540))),             
+            fluidRow(
+              h3("Raw data plot"),
+              h4("Luminescence (individual wells + mean)"),
+              column(width = 3,
+                     dropdownButton(
+                       h4("List of settings"),
+                       selectInput("raw_y_scale", "Luminosity scale:",
+                                   c("linear", "log2", "log10"),
+                                   width = 180),
+                       selectInput("raw_group", "Group:", 
+                                   multiple = FALSE,
+                                   choices = "",
+                                   selected = "",
+                                   width = 180),
+                       selectInput("raw_well", "Well(s) to plot:", 
+                                   multiple = FALSE,
+                                   choices = "",
+                                   selected = "",
+                                   width = 180),
+                       circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+                       label = "Figure settings",
+                       tooltip = tooltipOptions(title = "Click to see figure settings!")
+                     )), 
+              column(width = 3,
+                     shinyWidgets::actionBttn(
+                       "plot_raws",
+                       label = "Plot raw data!",
+                       color = "success",
+                       size = "sm",
+                       style = "unite",
+                       icon = icon("pencil"),
+                       block = TRUE
+                     ))
+              ),
+            fluidRow(
               plotOutput("rawPlot", height = "auto"),
               br(),
               column(width = 3,
-                     downloadButton("rawDownloadPlot", HTML("Download<br/>Plot"))
-              ),
-              column(width = 2,
-                     numericInput("rawPlot_W","Width (cm):", 20,
-                                  min = 1, 
-                                  max = 100)
-              ),
-              column(width = 2,
-                     numericInput("rawPlot_H","Height (cm):", 10,
-                                  min = 1, 
-                                  max = 100)
-              ),
-              column(width = 2,
-                     numericInput("rawPlot_DPI","DPI:", 300,
-                                  min = 1, 
-                                  max = 3000)
-              )
-            )
-          )
+                     dropdownButton(
+                       numericInput("rawPlot_W","Width (cm):", 20,
+                                    min = 1, 
+                                    max = 100),
+                       numericInput("rawPlot_H","Height (cm):", 20,
+                                    min = 1, 
+                                    max = 100),
+                       numericInput("rawPlot_DPI","DPI:", 300,
+                                    min = 1, 
+                                    max = 3000),
+                       downloadButton("rawDownloadPlot", HTML("Download<br/>Plot")),
+                       circle = FALSE, status = "success", icon = icon("file"), width = "300px",
+                       label = "Download figure",
+                       tooltip = tooltipOptions(title = "Click to see download options!")
+                     ))))
         ),
         # Processed data ####
         tabPanel(
@@ -158,115 +177,136 @@ shinyUI(fluidPage(
                                c("Light", "Darkness"),
                                selected = "Light")
             )),
+          fluidRow(column(width = 3,
+                          actionBttn(
+                            inputId = "run_prepro",
+                            label = "Preprocess the data!",
+                            color = "primary",
+                            size = "sm",
+                            style = "unite",
+                            icon = icon("refresh"),
+                            block = TRUE
+                          ))
+          ),
           fluidRow(
             h3("Plotting group means:"),
-            column(width = 4,
-                 selectInput("section_grouped_preprocessed", "Plot section:",
-                             multiple = TRUE,
-                             c("LD", "DD"),
-                             selected = c("LD", "DD"))
-                 ),
-            column(width = 8,
-                   selectInput("preprocessed_grouped_group", "Group:", 
-                               multiple = TRUE,
-                               choices = "",
-                               selected = "",
-                               width = 400)
-                   )),
+            h4("Detrended luminescence (group means)"),
+            column(width = 3,
+            dropdownButton(
+               h4("List of settings"),
+               selectInput("section_grouped_preprocessed", "Plot section:",
+                           multiple = TRUE,
+                           c("LD", "DD"),
+                           selected = c("LD", "DD")),
+              selectInput("preprocessed_grouped_group", "Group:",
+                          multiple = TRUE,
+                          choices = "",
+                          selected = "",
+                          width = 400),
+             selectInput("preprocessed_grouped_well",
+                         multiple = FALSE,
+                         "Select what to plot*:",
+                         c("All the wells" = "all",
+                           "Only synchronized" = "only_synch",
+                           "Only rhythmic" = "only_rhythm",
+                           "Only entrained" = "only_entrained"),
+                         selected = c("All the wells")),
+             actionButton(inputId = "info", label = "(*) Info", width = "100%", class = "btn-info", style = "color: #FFF"),
+             br(),
+             selectInput("preprocessed_sd", "Plot SD band:",
+                         multiple = FALSE,
+                         choices = c("yes", "no"),
+                         selected = "yes",
+                         width = 180),
+            selectInput("GroupColors",
+                        multiple = FALSE,
+                        "Group colors:",
+                        c("Lancet", "Nature", "NEJM"),
+                        selected = "Lancet"),
+            circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+            label = "Figure settings",
+            tooltip = tooltipOptions(title = "Click to see figure settings!")
+            )),
+            column(width = 3,
+                   actionBttn(
+                     inputId = "plot_prepro1",
+                     label = "Plot!",
+                     color = "success",
+                     size = "sm",
+                     style = "unite",
+                     icon = icon("pencil"),
+                     block = TRUE
+                   )
+            )),
           fluidRow(
-            column(width = 4,
-                 selectInput("preprocessed_grouped_well", 
-                             multiple = FALSE,
-                             "Select what to plot*:", 
-                             c("All the wells" = "all",
-                               "Only synchronized" = "only_synch",
-                               "Only rhythmic" = "only_rhythm",
-                               "Only entrained" = "only_entrained"),
-                             selected = c("All the wells"))
-          ),
-          column(width = 4,
-                 selectInput("preprocessed_sd", "Plot SD band:", 
-                             multiple = FALSE,
-                             choices = c("yes", "no"),
-                             selected = "yes",
-                             width = 180)
-          ),
-          column(width = 4,
-                 selectInput("GroupColors", 
-                             multiple = FALSE,
-                             "Group colors:", 
-                             c("Lancet", "Nature", "NEJM"),
-                             selected = "Lancet") 
-          )),
-          fluidRow(
-            "Detrended luminescence (group means)",
             plotOutput("detrended_group_Plot", height = "auto"),
             br(),
             column(width = 3,
-                   downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot"))
-                   ),
-            column(width = 2,
-                   numericInput("detrendedPlot_W","Width (cm):", 20,
-                                min = 1, 
-                                max = 100)
-                   ),
-            column(width = 2,
-                   numericInput("detrendedPlot_H","Height (cm):", 10,
-                                min = 1, 
-                                max = 100)
-            ),
-            column(width = 2,
-                   numericInput("detrendedPlot_DPI","DPI:", 300,
-                                min = 1, 
-                                max = 3000)
-            )
+                   dropdownButton(
+                     numericInput("detrendedPlot_W","Width (cm):", 20,
+                                  min = 1, 
+                                  max = 100),
+                     numericInput("detrendedPlot_H","Height (cm):", 20,
+                                  min = 1, 
+                                  max = 100),
+                     numericInput("detrendedPlot_DPI","DPI:", 300,
+                                  min = 1, 
+                                  max = 3000),
+                     downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot")),
+                     circle = FALSE, status = "success", icon = icon("file"), width = "300px",
+                     label = "Download figure",
+                     tooltip = tooltipOptions(title = "Click to see download options!")
+            ))
           ),
           fluidRow(
             h3("Plotting individual wells for a given group:"),
-            column(width = 4,
-                   selectInput("section_indiv_preprocessed", "Plot section:",
-                               multiple = TRUE,
-                               c("LD", "DD"),
-                               selected = c("LD", "DD"))
-            ),
-            column(width = 4,
-                   selectInput("preprocessed_indiv_group", "Group:", 
-                               multiple = FALSE,
-                               choices = "",
-                               selected = "",
-                               width = 400)
-            )),
+            h4("Detrended luminescence for a given group (individual wells + group mean)"),
+            column(width = 3,
+                   dropdownButton(
+                     h4("List of settings"),
+                     selectInput("section_indiv_preprocessed", "Plot section:",
+                                 multiple = TRUE,
+                                 c("LD", "DD"),
+                                 selected = c("LD", "DD")),
+                     selectInput("preprocessed_indiv_group", "Group:", 
+                                 multiple = FALSE,
+                                 choices = "",
+                                 selected = "",
+                                 width = 400),
+                     circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+                     label = "Figure settings",
+                     tooltip = tooltipOptions(title = "Click to see figure settings!")
+                   )),
+            column(width = 3,
+                   actionBttn(
+                     inputId = "plot_prepro2",
+                     label = "Plot!",
+                     color = "success",
+                     size = "sm",
+                     style = "unite",
+                     icon = icon("pencil"),
+                     block = TRUE
+                   )
+          )),
           fluidRow(
-            "Detrended luminescence for a given group (individual wells + group mean)",
-            br(),
             plotOutput("detrended_indiv_Plot", height = "auto"),
             br(),
             column(width = 3,
-                   downloadButton("detrendedDownload_indiv_Plot", HTML("Download<br/>Plot"))
-            ),
-            column(width = 2,
-                   numericInput("detrendedPlot_W","Width (cm):", 20,
-                                min = 1, 
-                                max = 100)
-            ),
-            column(width = 2,
-                   numericInput("detrendedPlot_H","Height (cm):", 10,
-                                min = 1, 
-                                max = 100)
-            ),
-            column(width = 2,
-                   numericInput("detrendedPlot_DPI","DPI:", 300,
-                                min = 1, 
-                                max = 3000)
-            )
-          ),
-          fluidRow(
-            HTML(paste("<b>(*)<br>Synchronized</b>: R>R<sub>tr</sub> in LD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations where the period and acrophase are set by the LD/CW zeitgebers.<br>", 
-                       "<b>Rhythmic</b>: R>R<sub>tr</sub> in LD and R>R<sub>tr</sub> in DD.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Circadian under constant conditions populations.<br>", 
-                       "<b>Entrained</b>: R>R<sub>tr</sub> in LD and phase difference of +/- phase<sub>tr</sub> h.<br>&nbsp&nbsp&nbsp&nbsp&nbsp Populations that retained their circadian acrophase when placed under constant conditions<br>", 
-                       sep="<br/>"))
-          ) 
-        )
+                   dropdownButton(
+                     numericInput("detrendedIndivPlot_W","Width (cm):", 20,
+                                  min = 1, 
+                                  max = 100),
+                     numericInput("detrendedIndivPlot_H","Height (cm):", 20,
+                                  min = 1, 
+                                  max = 100),
+                     numericInput("detrendedIndivPlot_DPI","DPI:", 300,
+                                  min = 1, 
+                                  max = 3000),
+                     downloadButton("detrendedIndivDownloadPlot", HTML("Download<br/>Plot")),
+                     circle = FALSE, status = "success", icon = icon("file"), width = "300px",
+                     label = "Download figure",
+                     tooltip = tooltipOptions(title = "Click to see download options!")
+                   ))))
         ),
         # Periods ####
         tabPanel("Periods",
@@ -484,6 +524,86 @@ shinyUI(fluidPage(
                    dataTableOutput('table_rayleigh')
             )
           )
+        ),
+        # Stats ####
+        tabPanel("Stats",
+                 fluidRow(
+                   column(width = 6,
+                          selectInput("select_stats", 
+                                      multiple = FALSE,
+                                      "Select what stats to use:", 
+                                      c("Parametric" = "parametric",
+                                        "Non parametric" = "nonparametric"),
+                                      selected = c("Parametric"))
+                   ),
+                   column(width = 6,
+                          selectInput("stat_filter", 
+                                      multiple = FALSE,
+                                      "Select how to filter the data before analysis:", 
+                                      c("All the wells" = "all",
+                                        "Only synchronized" = "only_synch",
+                                        "Only rhythmic" = "only_rhythm",
+                                        "Only entrained" = "only_entrained"),
+                                      selected = c("All the wells"))
+                   )
+                 ),
+                 fluidRow(column(width = 4),
+                   column(width = 4,
+                          actionBttn(
+                            inputId = "start_stat",
+                            label = "Run the analysis!",
+                            color = "primary",
+                            size = "sm",
+                            style = "unite",
+                            icon = icon("refresh"),
+                            block = TRUE
+                          )),
+                          column(width = 4)
+                 ),
+                 ## Periods ####
+                 fluidRow(
+                  h3("Period comparison DD"),
+                  br(),
+                  "First let's test the dependence of the period with the group. This is done by means of a linear model
+                  implemented using the lm function of base R using the period ~ group formula:",
+                  br(),
+                  column(width = 12,
+                        dataTableOutput('stat_periods_DD'))
+                 ),
+                 fluidRow(
+                   h4("Multiple comparisons"),
+                   selectInput("mult_comp_corr_period", 
+                               multiple = FALSE,
+                               "How to correct for multiple comparisons:", 
+                               c("Bonferroni" = "bonferroni",
+                                 "None" = "none",
+                                 "Holm-Bonferroni" = "holm"),
+                               selected = c("Bonferroni")),
+                   column(width = 12,
+                        dataTableOutput('pairwise_periods_DD'))
+                 ),
+                 ## Amplitudes ####
+                 fluidRow(
+                   h3("Amplitude comparison DD"),
+                   br(),
+                   "First let's test the dependence of the amplitude with the group. This is done by means of a linear model
+                  implemented using the lm function of base R using the amplitude ~ group formula:",
+                  br(),
+                  column(width = 12,
+                         dataTableOutput('stat_amps_DD'))
+                 ),
+                 fluidRow(
+                   h4("Multiple comparisons"),
+                   selectInput("mult_comp_corr_amp", 
+                               multiple = FALSE,
+                               "How to correct for multiple comparisons:", 
+                               c("Bonferroni" = "bonferroni",
+                                 "None" = "none",
+                                 "Holm-Bonferroni" = "holm"),
+                               selected = c("Bonferroni")),
+                   column(width = 12,
+                          dataTableOutput('pairwise_amps_DD'))
+                 )
         ),
         # Settings ####
         tabPanel("Settings",

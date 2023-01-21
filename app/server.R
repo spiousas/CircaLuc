@@ -7,11 +7,30 @@
 #    http://shiny.rstudio.com/
 #
 
-
 # Define server logic 
 shinyServer(function(session, input, output) {
   
   # Setup ####
+  # Disable action buttons
+  shinyjs::disable('plot_raws')
+  shinyjs::disable('run_prepro')
+  shinyjs::disable('plot_prepro1')
+  shinyjs::disable('plot_prepro2')
+  
+  # Turn summarise notifications off
+  options(dplyr.summarise.inform = FALSE)
+  
+  # Info on the conditions
+  observeEvent(input$info, {
+    sendSweetAlert(
+      session = session,
+      title = "What does this means",
+      text = paste("(*)Synchronized: R>Rtr in LD. Populations where the period and acrophase are set by the LD/CW zeitgebers.", 
+                   "Rhythmic: R>Rtr in LD and R>Rtr in DD. Circadian under constant conditions populations.", 
+                   "Entrained: R>Rtr in LD and phase difference of +/- phase_tr. Populations that retained their circadian acrophase when placed under constant conditions"),
+      type = "info"
+    )
+  })
   
   # ggplot2 theme
   theme_set(
@@ -43,7 +62,7 @@ shinyServer(function(session, input, output) {
     req(file)
     validate(need(ext == c("csv", "tsv"), "Please upload a csv file"))
     
-    read_delim(file$datapath, delim = input$sep) %>%
+    read_delim(file$datapath, delim = input$sep, show_col_types = FALSE) %>%
     pivot_longer(!ZTTime,
                  names_to = "well",
                  values_to = "lumin") %>%
@@ -58,10 +77,16 @@ shinyServer(function(session, input, output) {
       # Linear approximation of missing points the time vector
       lumin = na.approx(lumin),
       # Linear approximation of missing luminosity
-      Z_lumin = (lumin - mean(lumin, na.rm = TRUE)) / sd(lumin, na.rm =
-                                                           TRUE) # Z-scored lumin
+      Z_lumin = (lumin - mean(lumin, na.rm = TRUE)) / sd(lumin, na.rm = TRUE) # Z-scored lumin
     )
   })
+  
+  # Update of the plot rawand preprocessing action buttons
+  observeEvent(!is_empty(data.df()), {
+    message("Data loaded!")
+    shinyjs::enable('plot_raws')
+    shinyjs::enable('run_prepro')
+    })
   
   ## ├Filter the data ####
   observe({
@@ -154,15 +179,24 @@ shinyServer(function(session, input, output) {
   })
   
   # Raw data plot ####
-  data_rawPlot <- reactive({
+  data_rawPlot <- eventReactive(input$plot_raws, {
     
+    # Filter what group to plot
     data.df.plot <- data.df_filtered() %>% 
       dplyr::filter(group %in% input$raw_group)
     
+    # Filter what wells to plot
     if (!("all" %in% input$raw_well)) {
-      data.df.plot <- data.df.plot %>% dplyr::filter(well %in% input$raw_well)
+      data.df.plot <- data.df.plot %>% 
+        dplyr::filter(well %in% input$raw_well) %>%
+        drop_na(lumin)
     }
     
+    # Min and max of the gray rectangles in the plot
+    min_rect <- min(data.df.plot$lumin, na.rm = TRUE) 
+    max_rect <- max(data.df.plot$lumin, na.rm = TRUE)
+    
+    # Build the figure
     data.df.plot %>%
       ggplot(aes(x = ZTTime, y = lumin)) +
       annotate("rect", 
@@ -171,31 +205,32 @@ shinyServer(function(session, input, output) {
                           input$ZTLD-1,input$LD_period), 
                xmax = seq(input$ZTcorte+ifelse(input$LD_starts_with=="Light",
                                                input$LD_period,input$LD_period/2),
-                          input$ZTLD,input$LD_period), 
-               ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]), 
-               ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]),
+                          input$ZTLD,input$LD_period),
+               ymin = min_rect,
+               ymax = max_rect,
                fill = input$DarkShadeColor,
                alpha = .2) +
       annotate("rect",
                xmin = input$ZTLD, 
-               xmax = input$ZTDD, 
-               ymin = min(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]), 
-               ymax = max(data.df.plot$lumin[data.df.plot$well %in% input$raw_well]),
+               xmax = input$ZTDD,
+               ymin = min_rect,
+               ymax = max_rect,
                fill = input$DarkShadeColor,
                alpha = .2) +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
-                 size = .5, 
+                 linewidth = .5, 
                  color = "gray70") +
       geom_vline(xintercept = c(input$ZTLD, input$ZTcorte),
                  linetype = "dashed",
-                 size = 1) +
+                 linewidth = 1) +
       geom_line(aes(group = well),
-                size = .5,
+                linewidth = .5,
                 color = input$IndividualRawColor,
                 alpha = .5) +
       stat_summary(size = 1,
                    color = input$MeanRawColor,
-                   geom = "line") +
+                   geom = "line",
+                   fun.data = "mean_se") +
       labs(x = "Time (h)",
            y = "Luminescence (RLU/min)") +
       scale_y_continuous(labels = scientific,
@@ -203,19 +238,29 @@ shinyServer(function(session, input, output) {
                                          "identity",
                                          input$raw_y_scale)) +
       scale_x_continuous(breaks = seq(min(data.df.plot$ZTTime)-1, input$ZTDD, 12),
-                         limits = c(min(data.df.plot$ZTTime)-1, input$ZTDD+1)) +
+                         limits = c(min(data.df.plot$ZTTime)-1, input$ZTDD+1),
+                         oob = scales::squish) +
       theme(legend.position = "none",
             plot.title.position = "plot") 
     
   })
   
+  # Render raw plot
   output$rawPlot <- renderPlot({data_rawPlot()}, 
                                height = 400, 
                                width = 600 )
   
   # Processed data ####
   ## ├Weighting and  cutting in sections ####
-  weighted.df <- reactive({
+  
+  observeEvent(input$run_prepro,show_alert(
+    title = "Running!!",
+    text = "The data is being preprocessed",
+    type = "info",
+    showCloseButton = FALSE
+  ))
+  
+  weighted.df <- eventReactive(input$run_prepro, {
     data.df_filtered() %>%
       group_by(well) %>%
       mutate(
@@ -240,7 +285,7 @@ shinyServer(function(session, input, output) {
   ## Detrended and smoothed data for fits and calculations ####
   smoothed.df <- reactive({
     weighted.df() %>%
-      group_by(well, section) %>% # Grouping by well for detrending and smoothing
+      group_by(group, well, section) %>% # Grouping by well for detrending and smoothing
       mutate(
         lumin_detrended = circaluc_detrending(lumin_weighted, input$method_detrending),
         lumin_smoothed = gsignal::conv(lumin_detrended,
@@ -297,8 +342,19 @@ shinyServer(function(session, input, output) {
       bind_rows(smoothed.df.continuous() %>% select(well, ZTTime, lumin_smoothed, section, group))
   })
   
+    # Update of the action buttons for plotting preprocessed data
+    observeEvent(!is_empty(smoothed.df.plot()), {
+      shinyjs::enable('plot_prepro1')
+      shinyjs::enable('plot_prepro2')
+      show_alert(
+        title = "Data ready!!",
+        text = "The preprocessing ran succesfully",
+        type = "success"
+      )
+    })
+    
   ## ├Detrended group plot ####
-  detrended_grouped_Plot <- reactive({
+  detrended_grouped_Plot <- eventReactive(input$plot_prepro1, {
     
     smoothed_data <- smoothed.df.plot() %>%
       dplyr::filter((section %in% input$section_grouped_preprocessed)) %>%
@@ -370,14 +426,14 @@ shinyServer(function(session, input, output) {
                ymax = ymax_label,
                fill = input$DarkColor) +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
-                 size = .5, 
+                 linewidth = .5, 
                  color = "gray70") +
       extra_plots +
-      geom_line(size = 1,
+      geom_line(linewidth = 1,
                 alpha = .8) +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
-                 size = 1) +
+                 linewidth = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
            color = NULL) +
@@ -397,7 +453,7 @@ shinyServer(function(session, input, output) {
                                             width = 600)
   
     ## ├Detrended indiv plot ####
-    detrended_indiv_Plot <- reactive({
+    detrended_indiv_Plot <- eventReactive(input$plot_prepro2, {
       
       smoothed_data <- smoothed.df.plot() %>%
         dplyr::filter((section %in% input$section_indiv_preprocessed)) %>%
@@ -461,10 +517,10 @@ shinyServer(function(session, input, output) {
                ymax = ymax_label,
                fill = input$DarkColor) +
       geom_vline(xintercept = seq(input$ZTcorte+input$LD_period/2, input$ZTDD, input$LD_period/2),
-                 size = .5, 
+                 linewidth = .5, 
                  color = "gray70") +
       geom_line(aes(group = well),
-                size = 1,
+                linewidth = 1,
                 alpha = .5, 
                 color = "gray50") +
       stat_summary(size = 1,
@@ -473,7 +529,7 @@ shinyServer(function(session, input, output) {
                 fun.data = mean_se) +
       geom_vline(xintercept = input$ZTLD,
                  linetype = "dashed",
-                 size = 1) +
+                 linewidth = 1) +
       labs(x = "Time (h)",
            y = "Detrended luminescence",
            color = NULL) +
@@ -498,7 +554,7 @@ shinyServer(function(session, input, output) {
       mutate(method = if_else(section == "LD", 
                               input$methodLD, 
                               input$methodDD)) %>%
-      group_by(well, section, method) %>%
+      group_by(group, well, section, method) %>%
       nest() %>%
       mutate(period = map(data, ~period_estimation(signal = .x$lumin_smoothed,
                                                    time = .x$ZTTime,
@@ -563,7 +619,7 @@ shinyServer(function(session, input, output) {
                               ZTTime - input$ZTcorte,
                               ZTTime - input$ZTLD)) %>%
       nest() %>% 
-      left_join(periods.df(), by = c("well", "section")) %>%
+      left_join(periods.df(), by = c("well", "section", "group")) %>%
       mutate(
         fit = map(data, ~nls(lumin_smoothed ~ alpha + amp * cos(2*pi*ZTTime/period - acro),
                              data = .x,
@@ -573,7 +629,7 @@ shinyServer(function(session, input, output) {
       ) %>% 
       unnest(tidied)  %>% 
       unnest(R) %>%
-      select(all_of(c("well", "section", "period", "term", "estimate", "R"))) %>%
+      select(all_of(c("well", "section", "group", "period", "term", "estimate", "R"))) %>%
       pivot_wider(names_from = "term",
                   values_from = "estimate") %>%
       ungroup() %>%
@@ -585,7 +641,7 @@ shinyServer(function(session, input, output) {
         amp = if_else(amp<0, -amp, amp),
         acro_24 = acro*12/pi
       ) %>%
-      group_by(well) %>%
+      group_by(group, well) %>%
       mutate(synch =  if_else(R[section=="LD"]>input$RpassLD, 
                               "yes!", "no"),
              rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$RpassDD), 
@@ -889,6 +945,73 @@ shinyServer(function(session, input, output) {
     circ.means()
   )
   
+  # Stats ####
+  ## ├Period comp DD ####
+  stat_periods_DD <- reactive({
+    m_periods_DD <- periods.df() %>%
+      dplyr::filter(section == "DD") %>%
+      lm(data = ., period ~ group)
+    
+    tidy(aov(m_periods_DD))
+  })
+  
+  output$stat_periods_DD <- renderDataTable(
+    stat_periods_DD()
+  )
+  
+  ## ├Mult-comp period DD ####
+  pairwise_periods_DD <- reactive({
+    tidy(pairwise.t.test(
+      x = periods.df() %>%
+        dplyr::filter(section == "DD") %>%
+        pull(period),
+      g = periods.df() %>%
+        dplyr::filter(section == "DD") %>%
+        pull(group),
+      p.adjust.method = input$mult_comp_corr_period
+    )
+    )
+  })
+  
+  output$pairwise_periods_DD <- renderDataTable(
+    pairwise_periods_DD(), options = list(
+      paging = TRUE,
+      pageLength =  5)
+  )
+  
+  ## ├Amplitude comp DD ####
+  stat_amps_DD <- reactive({
+    m_amps_DD <- cosinor.df() %>%
+      dplyr::filter(section == "DD") %>%
+      lm(data = ., amp ~ group)
+    
+    tidy(aov(m_amps_DD))
+  })
+  
+  output$stat_amps_DD <- renderDataTable(
+    stat_amps_DD()
+  )
+  
+  ## ├Mult-comp amplitude DD ####
+  pairwise_amps_DD <- reactive({
+    tidy(pairwise.t.test(
+      x = cosinor.df() %>%
+        dplyr::filter(section == "DD") %>%
+        pull(amp),
+      g = cosinor.df() %>%
+        dplyr::filter(section == "DD") %>%
+        pull(group),
+      p.adjust.method = input$mult_comp_corr_period
+    )
+    )
+  })
+  
+  output$pairwise_amps_DD <- renderDataTable(
+    pairwise_amps_DD(), options = list(
+      paging = TRUE,
+      pageLength =  5)
+  )
+  
   # Download ####
   ## ├Files ####
   # Hide download action buttons when there is no file loaded
@@ -960,9 +1083,9 @@ shinyServer(function(session, input, output) {
     },
     content = function(file){
       ggsave(file, 
-             width = input$detrendedPlot_W,
-             height = input$detrendedPlot_H,
-             dpi = input$detrendedPlot_DPI,
+             width = input$detrendedIndivPlot_W,
+             height = input$detrendedIndivPlot_H,
+             dpi = input$detrendedIndivPlot_DPI,
              plot = detrended_indiv_Plot())
     }
   )
