@@ -9,7 +9,7 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               ggthemes, patchwork, ggsci, tidymodels)
+               ggthemes, patchwork, ggsci, tidymodels, shinyWidgets)
 pacman::p_load_gh("emo", "pairwiseComparisons")
 
 useShinyjs()
@@ -38,7 +38,7 @@ shinyUI(fluidPage(
   #theme = bslib::bs_theme(bootswatch = "flatly"),
   
   # Application title ####
-  titlePanel(paste0("CircaLuc v0.5 ", emo::ji("clock"))),
+  titlePanel(paste0("CircaLuc v0.6 ", emo::ji("clock"))),
   
   # Sidebar ####
   sidebarLayout(
@@ -79,7 +79,7 @@ shinyUI(fluidPage(
               h3("Raw data plot"),
               h4("Luminescence (individual wells + mean)"),
               column(width = 3,
-                     dropdownButton(
+                     shinyWidgets::dropdownButton(
                        h4("List of settings"),
                        selectInput("raw_y_scale", "Luminosity scale:",
                                    c("linear", "log2", "log10"),
@@ -95,16 +95,16 @@ shinyUI(fluidPage(
                                    selected = "",
                                    width = 180),
                        circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
-                       label = "Figure settings",
+                       style = "material-flat", label = "Figure settings",
                        tooltip = tooltipOptions(title = "Click to see figure settings!")
                      )), 
-              column(width = 3,
+              column(width = 4,
                      shinyWidgets::actionBttn(
                        "plot_raws",
                        label = "Plot raw data!",
                        color = "success",
                        size = "sm",
-                       style = "unite",
+                       style = "material-flat",
                        icon = icon("pencil"),
                        block = TRUE
                      ))
@@ -112,7 +112,7 @@ shinyUI(fluidPage(
             fluidRow(
               plotOutput("rawPlot", height = "auto"),
               br(),
-              column(width = 3,
+              column(width = 4,
                      dropdownButton(
                        numericInput("rawPlot_W","Width (cm):", 20,
                                     min = 1, 
@@ -131,7 +131,7 @@ shinyUI(fluidPage(
         ),
         # Processed data ####
         tabPanel(
-          "Processed data",
+          "Preprocessed data",
           fluidPage(
             fluidRow(
               h3("Preprocessing parameters:"),
@@ -177,13 +177,14 @@ shinyUI(fluidPage(
                                c("Light", "Darkness"),
                                selected = "Light")
             )),
-          fluidRow(column(width = 3,
+          fluidRow(column(width = 4),
+                   column(width = 4,
                           actionBttn(
                             inputId = "run_prepro",
                             label = "Preprocess the data!",
                             color = "primary",
                             size = "sm",
-                            style = "unite",
+                            style = "material-flat",
                             icon = icon("refresh"),
                             block = TRUE
                           ))
@@ -191,58 +192,56 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting group means:"),
             h4("Detrended luminescence (group means)"),
-            column(width = 3,
-            dropdownButton(
-               h4("List of settings"),
-               selectInput("section_grouped_preprocessed", "Plot section:",
-                           multiple = TRUE,
-                           c("LD", "DD"),
-                           selected = c("LD", "DD")),
-              selectInput("preprocessed_grouped_group", "Group:",
-                          multiple = TRUE,
-                          choices = "",
-                          selected = "",
-                          width = 400),
-             selectInput("preprocessed_grouped_well",
-                         multiple = FALSE,
-                         "Select what to plot*:",
-                         c("All the wells" = "all",
-                           "Only synchronized" = "only_synch",
-                           "Only rhythmic" = "only_rhythm",
-                           "Only entrained" = "only_entrained"),
-                         selected = c("All the wells")),
-             actionButton(inputId = "info", label = "(*) Info", width = "100%", class = "btn-info", style = "color: #FFF"),
-             br(),
-             selectInput("preprocessed_sd", "Plot SD band:",
-                         multiple = FALSE,
-                         choices = c("yes", "no"),
-                         selected = "yes",
-                         width = 180),
-            selectInput("GroupColors",
-                        multiple = FALSE,
-                        "Group colors:",
-                        c("Lancet", "Nature", "NEJM"),
-                        selected = "Lancet"),
-            circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
-            label = "Figure settings",
-            tooltip = tooltipOptions(title = "Click to see figure settings!")
-            )),
-            column(width = 3,
-                   actionBttn(
-                     inputId = "plot_prepro1",
-                     label = "Plot!",
-                     color = "success",
-                     size = "sm",
-                     style = "unite",
-                     icon = icon("pencil"),
-                     block = TRUE
-                   )
-            )),
+            column(width = 6,
+                   shinyWidgets::dropdownButton(
+                     h4("List of settings"),
+                     selectInput("section_grouped_preprocessed", "Plot section:",
+                                 multiple = TRUE,
+                                 c("LD", "DD"),
+                                 selected = c("LD", "DD")),
+                     selectInput("preprocessed_grouped_group", "Group:",
+                                 multiple = TRUE,
+                                 choices = "",
+                                 selected = "",
+                                 width = 400),
+                     selectInput("preprocessed_grouped_well",
+                                 multiple = FALSE,
+                                 "Select what to plot*:",
+                                 c("All the wells" = "all",
+                                   "Only synchronized" = "only_synch",
+                                   "Only rhythmic" = "only_rhythm",
+                                   "Only entrained" = "only_entrained"),
+                                 selected = c("All the wells")),
+                     actionButton(inputId = "info", label = "(*) Info", width = "100%", class = "btn-info", style = "color: #FFF"),
+                     br(),
+                     selectInput("preprocessed_sd", "Plot SD band:",
+                                 multiple = FALSE,
+                                 choices = c("yes", "no"),
+                                 selected = "yes",
+                                 width = 180),
+                     selectInput("GroupColors",
+                                 multiple = FALSE,
+                                 "Group colors:",
+                                 c("Lancet", "Nature", "NEJM"),
+                                 selected = "Lancet"),
+                     shinyWidgets::actionBttn(
+                       inputId = "plot_prepro1",
+                       label = "Plot!",
+                       color = "success",
+                       size = "sm",
+                       style = "material-flat",
+                       icon = icon("pencil"),
+                       block = TRUE
+                     ),
+                     circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+                     label = "Figure options and plotting",
+                     tooltip = tooltipOptions(title = "Click to see figure settings!")
+                   ))),
           fluidRow(
             plotOutput("detrended_group_Plot", height = "auto"),
             br(),
-            column(width = 3,
-                   dropdownButton(
+            column(width = 4,
+                   shinyWidgets::dropdownButton(
                      numericInput("detrendedPlot_W","Width (cm):", 20,
                                   min = 1, 
                                   max = 100),
@@ -261,8 +260,8 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting individual wells for a given group:"),
             h4("Detrended luminescence for a given group (individual wells + group mean)"),
-            column(width = 3,
-                   dropdownButton(
+            column(width = 6,
+                   shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_indiv_preprocessed", "Plot section:",
                                  multiple = TRUE,
@@ -273,26 +272,24 @@ shinyUI(fluidPage(
                                  choices = "",
                                  selected = "",
                                  width = 400),
+                     shinyWidgets::actionBttn(
+                       inputId = "plot_prepro2",
+                       label = "Plot!",
+                       color = "success",
+                       size = "sm",
+                       style = "material-flat",
+                       icon = icon("pencil"),
+                       block = TRUE
+                     ),
                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
-                     label = "Figure settings",
+                     label = "Figure options and plotting",
                      tooltip = tooltipOptions(title = "Click to see figure settings!")
-                   )),
-            column(width = 3,
-                   actionBttn(
-                     inputId = "plot_prepro2",
-                     label = "Plot!",
-                     color = "success",
-                     size = "sm",
-                     style = "unite",
-                     icon = icon("pencil"),
-                     block = TRUE
-                   )
-          )),
+                   ))),
           fluidRow(
             plotOutput("detrended_indiv_Plot", height = "auto"),
             br(),
-            column(width = 3,
-                   dropdownButton(
+            column(width = 4,
+                   shinyWidgets::dropdownButton(
                      numericInput("detrendedIndivPlot_W","Width (cm):", 20,
                                   min = 1, 
                                   max = 100),

@@ -227,7 +227,7 @@ shinyServer(function(session, input, output) {
                 linewidth = .5,
                 color = input$IndividualRawColor,
                 alpha = .5) +
-      stat_summary(size = 1,
+      stat_summary(linewidth = 1,
                    color = input$MeanRawColor,
                    geom = "line",
                    fun.data = "mean_se") +
@@ -362,10 +362,12 @@ shinyServer(function(session, input, output) {
       dplyr::filter(well == "mean")
     
     range_lumin <- range(smoothed_data %>% pull(lumin_smoothed))
+    min_lumin_sd <- smoothed_data$lumin_sd[which.min(smoothed_data$lumin_smoothed)]
+    max_lumin_sd <- smoothed_data$lumin_sd[which.max(smoothed_data$lumin_smoothed)]
     
-    ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.2
-    ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.2
-    ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.15
+    ymin_rect <- range_lumin[1] - 1.2 * min_lumin_sd
+    ymax_rect <- range_lumin[2] + 1.1 * max_lumin_sd
+    ymax_label <-range_lumin[1] - 1.1 * min_lumin_sd
     
     # Grouped plot
     # Creates geom_ribbon() if "yes" is selected in "Plot SD band:"
@@ -764,8 +766,8 @@ shinyServer(function(session, input, output) {
                  ymax = ymax_label,
                  fill = input$DarkColor,
                  alpha = 1) +
-        geom_line(aes(y = lumin_predicted), size = 1, color = input$FitLineColor) +
-        geom_line(aes(y = lumin_smoothed), size = 1) +
+        geom_line(aes(y = lumin_predicted), linewidth = 1, color = input$FitLineColor) +
+        geom_line(aes(y = lumin_smoothed), linewidth = 1) +
         geom_vline(xintercept = input$ZTLD,
                    linetype = "dashed",
                    size = 1) +
