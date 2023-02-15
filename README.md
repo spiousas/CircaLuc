@@ -1,26 +1,22 @@
-README
-================
+------------------------------------------------------------------------
 
-## Quarto
+author: “Ignacio Spiousas” date: ‘2023-02-15’ output: github_document —
 
-Quarto enables you to weave together content and executable code into a
-finished document. To learn more about Quarto see <https://quarto.org>.
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 
-## Running Code
+# CircaLuc <a href='https://github.com/spiousas/Circaluc'><img src='https://ddhh.unq.edu.ar/wp-content/uploads/2017/04/Logo-UNQ-RGB.png' align="right" height="120" /></a>
 
-When you click the **Render** button a document will be generated that
-includes both content and the output of embedded code. You can embed
-code like this:
+Circaluc is a shinnyapp
 
-``` r
-1 + 1
-```
+## Developers 💻
 
-    [1] 2
+Ignacio Spiousas (UdeSA/Conicet)
+<a target="_blank" href="https://twitter.com/spiousas">
+<img align="left" alt="Twitter" width="18px" src="https://cdn.jsdelivr.net/npm/simple-icons@v3/icons/twitter.svg" />
+</a> <a target="_blank" href="https://github.com/spiousas">
+<img align="left" alt="GitHub" width="18px" src="https://cdn.jsdelivr.net/npm/simple-icons@v3/icons/github.svg" />
+</a>
 
-You can add options to executable code like this
+## Examples
 
-    [1] 4
-
-The `echo: false` option disables the printing of code (only output is
-displayed).
+## How to give credits

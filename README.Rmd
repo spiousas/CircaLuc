@@ -1,0 +1,38 @@
+---
+
+author: "Ignacio Spiousas"
+date: '2023-02-15'
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+library(emo)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+options(tibble.print_min = 5, tibble.print_max = 5)
+```
+
+# CircaLuc <a href='https://github.com/spiousas/Circaluc'><img src='https://ddhh.unq.edu.ar/wp-content/uploads/2017/04/Logo-UNQ-RGB.png' align="right" height="120" /></a>
+
+Circaluc is a shinnyapp 
+
+## Developers `r ji("computer")`
+
+Ignacio Spiousas (UdeSA/Conicet) <a target="_blank" href="https://twitter.com/spiousas">
+  <img align="left" alt="Twitter" width="18px" src="https://cdn.jsdelivr.net/npm/simple-icons@v3/icons/twitter.svg" />
+</a> <a target="_blank" href="https://github.com/spiousas">
+  <img align="left" alt="GitHub" width="18px" src="https://cdn.jsdelivr.net/npm/simple-icons@v3/icons/github.svg" />
+</a>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Examples
+
+## How to give credits
