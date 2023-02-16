@@ -179,7 +179,7 @@ shinyUI(fluidPage(
             )),
           fluidRow(column(width = 4),
                    column(width = 4,
-                          actionBttn(
+                          shinyWidgets::actionBttn(
                             inputId = "run_prepro",
                             label = "Preprocess the data!",
                             color = "primary",
@@ -192,7 +192,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting group means:"),
             h4("Detrended luminescence (group means)"),
-            column(width = 6,
+            column(width = 3,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_grouped_preprocessed", "Plot section:",
@@ -224,35 +224,46 @@ shinyUI(fluidPage(
                                  "Group colors:",
                                  c("Lancet", "Nature", "NEJM"),
                                  selected = "Lancet"),
-                     shinyWidgets::actionBttn(
-                       inputId = "plot_prepro1",
-                       label = "Plot!",
-                       color = "success",
-                       size = "sm",
-                       style = "material-flat",
-                       icon = icon("pencil"),
-                       block = TRUE
-                     ),
+                     sliderInput("preprocessed_y_limits", "Plot SD band:",
+                                 min = -0.1, max = 0.1,
+                                 value = c(-0.1, 0.1)),
                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
                      label = "Figure options and plotting",
                      tooltip = tooltipOptions(title = "Click to see figure settings!")
+                   )),
+            column(width = 3, 
+                   shinyWidgets::actionBttn(
+                     inputId = "plot_prepro1",
+                     label = "Plot!",
+                     color = "success",
+                     size = "sm",
+                     style = "material-flat",
+                     icon = icon("pencil"),
+                     block = TRUE
                    ))),
           fluidRow(
             plotOutput("detrended_group_Plot", height = "auto"),
             br(),
-            column(width = 4,
+            column(width = 3,
                    shinyWidgets::dropdownButton(
-                     numericInput("detrendedPlot_W","Width (cm):", 20,
+                     numericInput("detrendedPlot_W","Width (cm):", 8,
                                   min = 1, 
                                   max = 100),
-                     numericInput("detrendedPlot_H","Height (cm):", 20,
+                     numericInput("detrendedPlot_H","Height (cm):", 8,
                                   min = 1, 
                                   max = 100),
                      numericInput("detrendedPlot_DPI","DPI:", 300,
                                   min = 1, 
                                   max = 3000),
+                     shinyWidgets::radioGroupButtons(
+                       inputId = "detrendedPlot_device",
+                       label = "Format", 
+                       choices = c("png", "svg"),
+                       selected = "png",
+                       status = "primary"
+                     ),
                      downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot")),
-                     circle = FALSE, status = "success", icon = icon("file"), width = "300px",
+                     circle = FALSE, status = "success", icon = icon("file"), width = "100px",
                      label = "Download figure",
                      tooltip = tooltipOptions(title = "Click to see download options!")
             ))

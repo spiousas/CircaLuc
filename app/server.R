@@ -253,12 +253,14 @@ shinyServer(function(session, input, output) {
   # Processed data ####
   ## ├Weighting and  cutting in sections ####
   
-  observeEvent(input$run_prepro,show_alert(
-    title = "Running!!",
-    text = "The data is being preprocessed",
-    type = "info",
-    showCloseButton = FALSE
-  ))
+  observeEvent(input$run_prepro,
+               shinyWidgets::sendSweetAlert(
+                 title = "Running!!",
+                 text = "The data is being preprocessed",
+                 type = "info",
+                 showCloseButton = FALSE,
+                 closeOnClickOutside = FALSE,
+               ))
   
   weighted.df <- eventReactive(input$run_prepro, {
     data.df_filtered() %>%
@@ -354,8 +356,8 @@ shinyServer(function(session, input, output) {
     })
     
   ## ├Detrended group plot ####
-  detrended_grouped_Plot <- eventReactive(input$plot_prepro1, {
     
+  observe({
     smoothed_data <- smoothed.df.plot() %>%
       dplyr::filter((section %in% input$section_grouped_preprocessed)) %>%
       dplyr::filter(group %in% input$preprocessed_grouped_group) %>%
@@ -365,9 +367,25 @@ shinyServer(function(session, input, output) {
     min_lumin_sd <- smoothed_data$lumin_sd[which.min(smoothed_data$lumin_smoothed)]
     max_lumin_sd <- smoothed_data$lumin_sd[which.max(smoothed_data$lumin_smoothed)]
     
-    ymin_rect <- range_lumin[1] - 1.2 * min_lumin_sd
-    ymax_rect <- range_lumin[2] + 1.1 * max_lumin_sd
-    ymax_label <-range_lumin[1] - 1.1 * min_lumin_sd
+    # Update the limits 
+      updateSliderInput(
+        session,
+        "preprocessed_y_limits", "Plot SD band:",
+        min = -0.1, max = 0.1,
+        value = c(range_lumin[1] - 1.1 * max_lumin_sd, range_lumin[2] + 1.1 * max_lumin_sd)
+      )
+  })
+    
+  detrended_grouped_Plot <- eventReactive(input$plot_prepro1, {
+    
+    smoothed_data <- smoothed.df.plot() %>%
+      dplyr::filter((section %in% input$section_grouped_preprocessed)) %>%
+      dplyr::filter(group %in% input$preprocessed_grouped_group) %>%
+      dplyr::filter(well == "mean")
+    
+    ymin_rect  <- input$preprocessed_y_limits[1] * 1.1
+    ymax_rect  <- input$preprocessed_y_limits[2]
+    ymax_label <- input$preprocessed_y_limits[1]
     
     # Grouped plot
     # Creates geom_ribbon() if "yes" is selected in "Plot SD band:"
@@ -463,10 +481,13 @@ shinyServer(function(session, input, output) {
         dplyr::filter(well != "mean")
       
       range_lumin <- range(smoothed_data %>% pull(lumin_smoothed))
+      min_lumin_sd <- smoothed_data$lumin_sd[which.min(smoothed_data$lumin_smoothed)]
+      max_lumin_sd <- smoothed_data$lumin_sd[which.max(smoothed_data$lumin_smoothed)]
       
-      ymin_rect <- range_lumin[1] - abs(diff(range_lumin))*.1
-      ymax_rect <- range_lumin[2] + abs(diff(range_lumin))*.1
-      ymax_label <-range_lumin[1] - abs(diff(range_lumin))*.05
+      ymin_rect <- range_lumin[1] - 1.3 * min_lumin_sd
+      ymax_rect <- range_lumin[2] + 1.1 * max_lumin_sd
+      ymax_label <-range_lumin[1] - 1.1 * min_lumin_sd
+      
       
       # Individual plot
 
@@ -1067,14 +1088,19 @@ shinyServer(function(session, input, output) {
   # Detrended plot
   output$detrendedDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("detrendedGroupedPlot-", Sys.Date(), ".png"))
-      },
+      if (input$detrendedPlot_device == "png") {
+        here(paste0("detrendedGroupedPlot-", Sys.Date(), ".png"))
+      } else {
+        here(paste0("detrendedGroupedPlot-", Sys.Date(), ".svg"))  
+      }
+    },
     content = function(file){
       ggsave(file, 
              width = input$detrendedPlot_W,
              height = input$detrendedPlot_H,
              dpi = input$detrendedPlot_DPI,
-             plot = detrended_grouped_Plot())
+             plot = detrended_grouped_Plot(),
+             device = input$detrendedPlot_device)
     }
   )
   
