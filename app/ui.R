@@ -27,7 +27,7 @@ color_choices = list(
     "#7373FF", 
     "#FF7272"
   ),
-  as.list(c("#000000" "#E69F00" "#56B4E9" "#009E73" "#F0E442" "#0072B2" "#D55E00" "#CC79A7")),
+  as.list(c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")),
   as.list(brewer_pal(palette = "Blues")(9)),
   as.list(brewer_pal(palette = "Greens")(9)),
   as.list(brewer_pal(palette = "Spectral")(11)),
