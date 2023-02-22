@@ -9,8 +9,8 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               ggthemes, patchwork, ggsci, tidymodels, shinyWidgets)
-pacman::p_load_gh("emo", "pairwiseComparisons")
+               patchwork, ggsci, tidymodels, shinyWidgets, pairwiseComparisons)
+pacman::p_load_gh("emo")
 
 useShinyjs()
 useSweetAlert()
@@ -27,7 +27,7 @@ color_choices = list(
     "#7373FF", 
     "#FF7272"
   ),
-  as.list(colorblind_pal()(8)),
+  as.list(c("#000000" "#E69F00" "#56B4E9" "#009E73" "#F0E442" "#0072B2" "#D55E00" "#CC79A7")),
   as.list(brewer_pal(palette = "Blues")(9)),
   as.list(brewer_pal(palette = "Greens")(9)),
   as.list(brewer_pal(palette = "Spectral")(11)),
