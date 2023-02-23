@@ -9,7 +9,7 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               patchwork, ggsci, tidymodels, shinyWidgets, pairwiseComparisons)
+               patchwork, ggsci, tidymodels, shinyWidgets)
 pacman::p_load_gh("emo")
 
 useShinyjs()
@@ -578,18 +578,18 @@ shinyUI(fluidPage(
                   column(width = 12,
                         dataTableOutput('stat_periods_DD'))
                  ),
-                 fluidRow(
-                   h4("Multiple comparisons"),
-                   selectInput("mult_comp_corr_period", 
-                               multiple = FALSE,
-                               "How to correct for multiple comparisons:", 
-                               c("Bonferroni" = "bonferroni",
-                                 "None" = "none",
-                                 "Holm-Bonferroni" = "holm"),
-                               selected = c("Bonferroni")),
-                   column(width = 12,
-                        dataTableOutput('pairwise_periods_DD'))
-                 ),
+                 # fluidRow(
+                 #   h4("Multiple comparisons"),
+                 #   selectInput("mult_comp_corr_period", 
+                 #               multiple = FALSE,
+                 #               "How to correct for multiple comparisons:", 
+                 #               c("Bonferroni" = "bonferroni",
+                 #                 "None" = "none",
+                 #                 "Holm-Bonferroni" = "holm"),
+                 #               selected = c("Bonferroni")),
+                 #   column(width = 12,
+                 #        dataTableOutput('pairwise_periods_DD'))
+                 # ),
                  ## Amplitudes ####
                  fluidRow(
                    h3("Amplitude comparison DD"),
@@ -600,18 +600,18 @@ shinyUI(fluidPage(
                   column(width = 12,
                          dataTableOutput('stat_amps_DD'))
                  ),
-                 fluidRow(
-                   h4("Multiple comparisons"),
-                   selectInput("mult_comp_corr_amp", 
-                               multiple = FALSE,
-                               "How to correct for multiple comparisons:", 
-                               c("Bonferroni" = "bonferroni",
-                                 "None" = "none",
-                                 "Holm-Bonferroni" = "holm"),
-                               selected = c("Bonferroni")),
-                   column(width = 12,
-                          dataTableOutput('pairwise_amps_DD'))
-                 )
+                 # fluidRow(
+                 #   h4("Multiple comparisons"),
+                 #   selectInput("mult_comp_corr_amp", 
+                 #               multiple = FALSE,
+                 #               "How to correct for multiple comparisons:", 
+                 #               c("Bonferroni" = "bonferroni",
+                 #                 "None" = "none",
+                 #                 "Holm-Bonferroni" = "holm"),
+                 #               selected = c("Bonferroni")),
+                 #   column(width = 12,
+                 #          dataTableOutput('pairwise_amps_DD'))
+                 # )
         ),
         # Settings ####
         tabPanel("Settings",

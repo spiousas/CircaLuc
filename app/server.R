@@ -982,19 +982,19 @@ shinyServer(function(session, input, output) {
     stat_periods_DD()
   )
   
-  ## ├Mult-comp period DD ####
-  pairwise_periods_DD <- reactive({
-    tidy(pairwise.t.test(
-      x = periods.df() %>%
-        dplyr::filter(section == "DD") %>%
-        pull(period),
-      g = periods.df() %>%
-        dplyr::filter(section == "DD") %>%
-        pull(group),
-      p.adjust.method = input$mult_comp_corr_period
-    )
-    )
-  })
+  # ## ├Mult-comp period DD ####
+  # pairwise_periods_DD <- reactive({
+  #   tidy(pairwise.t.test(
+  #     x = periods.df() %>%
+  #       dplyr::filter(section == "DD") %>%
+  #       pull(period),
+  #     g = periods.df() %>%
+  #       dplyr::filter(section == "DD") %>%
+  #       pull(group),
+  #     p.adjust.method = input$mult_comp_corr_period
+  #   )
+  #   )
+  # })
   
   output$pairwise_periods_DD <- renderDataTable(
     pairwise_periods_DD(), options = list(
@@ -1015,19 +1015,19 @@ shinyServer(function(session, input, output) {
     stat_amps_DD()
   )
   
-  ## ├Mult-comp amplitude DD ####
-  pairwise_amps_DD <- reactive({
-    tidy(pairwise.t.test(
-      x = cosinor.df() %>%
-        dplyr::filter(section == "DD") %>%
-        pull(amp),
-      g = cosinor.df() %>%
-        dplyr::filter(section == "DD") %>%
-        pull(group),
-      p.adjust.method = input$mult_comp_corr_period
-    )
-    )
-  })
+  # ## ├Mult-comp amplitude DD ####
+  # pairwise_amps_DD <- reactive({
+  #   tidy(pairwise.t.test(
+  #     x = cosinor.df() %>%
+  #       dplyr::filter(section == "DD") %>%
+  #       pull(amp),
+  #     g = cosinor.df() %>%
+  #       dplyr::filter(section == "DD") %>%
+  #       pull(group),
+  #     p.adjust.method = input$mult_comp_corr_period
+  #   )
+  #   )
+  # })
   
   output$pairwise_amps_DD <- renderDataTable(
     pairwise_amps_DD(), options = list(
