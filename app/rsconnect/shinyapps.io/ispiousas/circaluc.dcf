@@ -5,9 +5,9 @@ account: ispiousas
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8396350
-bundleId: 6880658
+bundleId: 6883346
 url: https://ispiousas.shinyapps.io/circaluc/
-when: 1677183515.87135
-lastSyncTime: 1677183515.87137
+when: 1677244325.54239
+lastSyncTime: 1677244325.54241
 asMultiple: FALSE
 asStatic: FALSE

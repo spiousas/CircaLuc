@@ -9,7 +9,7 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               patchwork, ggsci, tidymodels, shinyWidgets)
+               patchwork, ggsci, shinyWidgets)
 pacman::p_load_gh("emo")
 
 useShinyjs()
