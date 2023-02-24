@@ -224,9 +224,9 @@ shinyUI(fluidPage(
                                  "Group colors:",
                                  c("Lancet", "Nature", "NEJM"),
                                  selected = "Lancet"),
-                     sliderInput("preprocessed_y_limits", "Plot SD band:",
-                                 min = -0.2, max = 0.2,
-                                 value = c(-0.2, 0.2)),
+                     sliderInput("preprocessed_y_limits", "Y-axis limits:",
+                                 min = -0.1, max = 0.1,
+                                 value = c(-0.1, 0.1)),
                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
                      label = "Figure options and plotting",
                      tooltip = tooltipOptions(title = "Click to see figure settings!")

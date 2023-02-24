@@ -367,12 +367,15 @@ shinyServer(function(session, input, output) {
     min_lumin_sd <- smoothed_data$lumin_sd[which.min(smoothed_data$lumin_smoothed)]
     max_lumin_sd <- smoothed_data$lumin_sd[which.max(smoothed_data$lumin_smoothed)]
     
+    ylim_min =  floor((range_lumin[1] - 1.2 * max_lumin_sd)*10)/10
+    ylim_max =  ceil((range_lumin[2] + 1.2 * max_lumin_sd)*10)/10
+    
     # Update the limits 
       updateSliderInput(
         session,
         "preprocessed_y_limits", "Plot SD band:",
-        min = -0.1, max = 0.1,
-        value = c(range_lumin[1] - 1.1 * max_lumin_sd, range_lumin[2] + 1.1 * max_lumin_sd)
+        min = ylim_min, max = ylim_max,
+        value = c(ylim_min, ylim_max)
       )
   })
     
