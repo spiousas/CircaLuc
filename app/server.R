@@ -373,7 +373,7 @@ shinyServer(function(session, input, output) {
     # Update the limits 
       updateSliderInput(
         session,
-        "preprocessed_y_limits", "Plot SD band:",
+        "preprocessed_y_limits", "Y-axis limits:",
         min = ylim_min, max = ylim_max,
         value = c(ylim_min, ylim_max)
       )
