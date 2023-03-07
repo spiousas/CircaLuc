@@ -670,7 +670,7 @@ shinyServer(function(session, input, output) {
       group_by(group, well) %>%
       mutate(synch =  if_else(R[section=="LD"]>input$RpassLD, 
                               "yes!", "no"),
-             rhythm = if_else((synch=="yes!") & (R[section=="DD"]>input$RpassDD), 
+             rhythm = if_else((R[section=="DD"]>input$RpassDD), 
                               "yes!", "no"),
              entrained = if_else((rhythm=="yes!") & (abs(acro_24[section=="DD"]-acro_24[section=="LD"]) < input$phasepass), 
                               "yes!", "no") 
