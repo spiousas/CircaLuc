@@ -78,7 +78,7 @@ shinyUI(fluidPage(
             fluidRow(
               h3("Raw data plot"),
               h4("Luminescence (individual wells + mean)"),
-              column(width = 3,
+              column(width = 2,
                      shinyWidgets::dropdownButton(
                        h4("List of settings"),
                        selectInput("raw_y_scale", "Luminosity scale:",
@@ -98,21 +98,17 @@ shinyUI(fluidPage(
                        style = "material-flat", label = "Figure settings",
                        tooltip = tooltipOptions(title = "Click to see figure settings!")
                      )), 
-              column(width = 4,
+              column(width = 2,
                      shinyWidgets::actionBttn(
                        "plot_raws",
-                       label = "Plot raw data!",
+                       label = "Plot!",
                        color = "success",
                        size = "sm",
                        style = "material-flat",
                        icon = icon("pencil"),
                        block = TRUE
-                     ))
-              ),
-            fluidRow(
-              plotOutput("rawPlot", height = "auto"),
-              br(),
-              column(width = 4,
+                     )),
+              column(width = 2,
                      dropdownButton(
                        numericInput("rawPlot_W","Width (cm):", 20,
                                     min = 1, 
@@ -124,10 +120,14 @@ shinyUI(fluidPage(
                                     min = 1, 
                                     max = 3000),
                        downloadButton("rawDownloadPlot", HTML("Download<br/>Plot")),
-                       circle = FALSE, status = "success", icon = icon("file"), width = "300px",
-                       label = "Download figure",
+                       circle = FALSE, status = "primary", icon = icon("file"), width = "300px",
+                       label = "Download raw data plot",
                        tooltip = tooltipOptions(title = "Click to see download options!")
-                     ))))
+                     )))
+              ),
+            fluidRow(
+              plotOutput("rawPlot", height = "auto"),
+            )
         ),
         # Processed data ####
         tabPanel(
@@ -192,7 +192,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting group means:"),
             h4("Detrended luminescence (group means)"),
-            column(width = 3,
+            column(width = 2,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_grouped_preprocessed", "Plot section:",
@@ -228,10 +228,10 @@ shinyUI(fluidPage(
                                  min = -0.1, max = 0.1,
                                  value = c(-0.1, 0.1)),
                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
-                     label = "Figure options and plotting",
+                     label = "Figure settings",
                      tooltip = tooltipOptions(title = "Click to see figure settings!")
                    )),
-            column(width = 3, 
+            column(width = 2, 
                    shinyWidgets::actionBttn(
                      inputId = "plot_prepro1",
                      label = "Plot!",
@@ -240,11 +240,8 @@ shinyUI(fluidPage(
                      style = "material-flat",
                      icon = icon("pencil"),
                      block = TRUE
-                   ))),
-          fluidRow(
-            plotOutput("detrended_group_Plot", height = "auto"),
-            br(),
-            column(width = 3,
+                   )),
+            column(width = 2,
                    shinyWidgets::dropdownButton(
                      numericInput("detrendedPlot_W","Width (cm):", 8,
                                   min = 1, 
@@ -263,10 +260,12 @@ shinyUI(fluidPage(
                        status = "primary"
                      ),
                      downloadButton("detrendedDownloadPlot", HTML("Download<br/>Plot")),
-                     circle = FALSE, status = "success", icon = icon("file"), width = "100px",
-                     label = "Download figure",
+                     circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
+                     label = "Download preprocessed plot",
                      tooltip = tooltipOptions(title = "Click to see download options!")
-            ))
+                   ))),
+          fluidRow(
+            plotOutput("detrended_group_Plot", height = "auto"),
           ),
           fluidRow(
             h3("Plotting individual wells for a given group:"),
@@ -462,70 +461,148 @@ shinyUI(fluidPage(
            fluidRow(
              h2("Cosinor fit results"),
              h3("Periods"),
+             column(width = 2,
+                    shinyWidgets::dropdownButton(
+                      h4("List of settings"),
+                      sliderInput("periods_y_limits", "Y-axis limits:",
+                                  min = 0, max = 48,
+                                  value = c(0, 25)),
+                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+                      label = "Figure settings",
+                      tooltip = tooltipOptions(title = "Click to see figure settings!")
+                    )),
+             column(width = 2,
+                    shinyWidgets::actionBttn(
+                      inputId = "plot_periods",
+                      label = "Plot!",
+                      color = "success",
+                      size = "sm",
+                      style = "material-flat",
+                      icon = icon("pencil"),
+                      block = TRUE
+                    )),
+             column(width = 2,
+                    shinyWidgets::dropdownButton(
+                      numericInput("periodsPlot_W","Width (cm):", 8,
+                                   min = 1,
+                                   max = 100),
+                      numericInput("periodsPlot_H","Height (cm):", 8,
+                                   min = 1,
+                                   max = 100),
+                      numericInput("periodsPlot_DPI","DPI:", 300,
+                                   min = 1,
+                                   max = 3000),
+                      shinyWidgets::radioGroupButtons(
+                        inputId = "periodsPlot_device",
+                        label = "Format",
+                        choices = c("png", "svg"),
+                        selected = "png",
+                        status = "primary"
+                      ),
+                      downloadButton("periodsPlotDownloadPlot", HTML("Download<br/>Plot")),
+                      circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
+                      label = "Download Periods",
+                      tooltip = tooltipOptions(title = "Click to see download options!")
+                    ))
+           ),
+           fluidRow(
              plotOutput("periodsPlot", height = "auto"),
-             column(width = 3,
-                    downloadButton("periodsPlotDownloadPlot", HTML("Download<br/>Plot"))
-             ),
-             column(width = 2,
-                    numericInput("periodsPlot_W","Width (cm):", 20,
-                                 min = 1, 
-                                 max = 100)
-             ),
-             column(width = 2,
-                    numericInput("periodsPlot_H","Height (cm):", 10,
-                                 min = 1, 
-                                 max = 100)
-             ),
-             column(width = 2,
-                    numericInput("periodsPlot_DPI","DPI:", 300,
-                                 min = 1, 
-                                 max = 3000)
-             )
            ),
            fluidRow(
              h3("Amplitude"),
-             plotOutput("ampsPlot",height = "auto"),
-             column(width = 3,
-                    downloadButton("ampsPlotDownloadPlot", HTML("Download<br/>Plot"))
-             ),
              column(width = 2,
-                    numericInput("ampsPlot_W","Width (cm):", 20,
-                                 min = 1, 
-                                 max = 100)
-             ),
+                    shinyWidgets::dropdownButton(
+                      h4("List of settings"),
+                      sliderInput("amps_y_limits", "Y-axis limits:",
+                                  min = 0, max = 0.1,
+                                  value = c(0, .05)),
+                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+                      label = "Figure settings",
+                      tooltip = tooltipOptions(title = "Click to see figure settings!")
+                    )),
              column(width = 2,
-                    numericInput("ampsPlot_H","Height (cm):", 10,
-                                 min = 1, 
-                                 max = 100)
-             ),
+                    shinyWidgets::actionBttn(
+                      inputId = "plot_amps",
+                      label = "Plot!",
+                      color = "success",
+                      size = "sm",
+                      style = "material-flat",
+                      icon = icon("pencil"),
+                      block = TRUE
+                    )),
              column(width = 2,
-                    numericInput("ampsPlot_DPI","DPI:", 300,
-                                 min = 1, 
-                                 max = 3000)
-             )
+                    shinyWidgets::dropdownButton(
+                      numericInput("ampsPlot_W","Width (cm):", 8,
+                                   min = 1,
+                                   max = 100),
+                      numericInput("ampsPlot_H","Height (cm):", 8,
+                                   min = 1,
+                                   max = 100),
+                      numericInput("ampsPlot_DPI","DPI:", 300,
+                                   min = 1,
+                                   max = 3000),
+                      shinyWidgets::radioGroupButtons(
+                        inputId = "ampsPlot_device",
+                        label = "Format",
+                        choices = c("png", "svg"),
+                        selected = "png",
+                        status = "primary"
+                      ),
+                      downloadButton("ampsPlotDownloadPlot", HTML("Download<br/>Plot")),
+                      circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
+                      label = "Download Amplitudes",
+                      tooltip = tooltipOptions(title = "Click to see download options!")
+                    ))
+           ),
+           fluidRow(
+             plotOutput("ampsPlot", height = "auto")
            ),
            fluidRow(
              h3("Acrophase"),
-             plotOutput("acrosPlot",height = "auto"),
-             column(width = 3,
-                    downloadButton("acrosPlotDownloadPlot", HTML("Download<br/>Plot"))
-             ),
              column(width = 2,
-                    numericInput("acrosPlot_W","Width (cm):", 20,
-                                 min = 1, 
-                                 max = 100)
-             ),
+                    shinyWidgets::dropdownButton(
+                      h4("List of settings"),
+                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
+                      label = "Figure settings",
+                      tooltip = tooltipOptions(title = "Click to see figure settings!")
+                    )),
              column(width = 2,
-                    numericInput("acrosPlot_H","Height (cm):", 10,
-                                 min = 1, 
-                                 max = 100)
-             ),
+                    shinyWidgets::actionBttn(
+                      inputId = "plot_acros",
+                      label = "Plot!",
+                      color = "success",
+                      size = "sm",
+                      style = "material-flat",
+                      icon = icon("pencil"),
+                      block = TRUE
+                    )),
              column(width = 2,
-                    numericInput("acrosPlot_DPI","DPI:", 300,
-                                 min = 1, 
-                                 max = 3000)
-             )
-           ),
+                    shinyWidgets::dropdownButton(
+                      numericInput("acrosPlot_W","Width (cm):", 8,
+                                   min = 1,
+                                   max = 100),
+                      numericInput("acrosPlot_H","Height (cm):", 8,
+                                   min = 1,
+                                   max = 100),
+                      numericInput("acrosPlot_DPI","DPI:", 300,
+                                   min = 1,
+                                   max = 3000),
+                      shinyWidgets::radioGroupButtons(
+                        inputId = "acrosPlot_device",
+                        label = "Format",
+                        choices = c("png", "svg"),
+                        selected = "png",
+                        status = "primary"
+                      ),
+                      downloadButton("acrosPlotDownloadPlot", HTML("Download<br/>Plot")),
+                      circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
+                      label = "Download Acrophases",
+                      tooltip = tooltipOptions(title = "Click to see download options!")
+                    ))
+          ),
+          fluidRow(
+             plotOutput("acrosPlot",height = "auto")
+          ),
           fluidRow(
             h3("Circular data"),
             column(width = 7,

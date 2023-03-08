@@ -16,6 +16,9 @@ shinyServer(function(session, input, output) {
   shinyjs::disable('run_prepro')
   shinyjs::disable('plot_prepro1')
   shinyjs::disable('plot_prepro2')
+  shinyjs::disable('plot_periods')
+  shinyjs::disable('plot_amps')
+  shinyjs::disable('plot_acros')
   
   # Turn summarise notifications off
   options(dplyr.summarise.inform = FALSE)
@@ -348,6 +351,9 @@ shinyServer(function(session, input, output) {
     observeEvent(!is_empty(smoothed.df.plot()), {
       shinyjs::enable('plot_prepro1')
       shinyjs::enable('plot_prepro2')
+      shinyjs::enable('plot_periods')
+      shinyjs::enable('plot_amps')
+      shinyjs::enable('plot_acros')
       show_alert(
         title = "Data ready!!",
         text = "The preprocessing ran succesfully",
@@ -856,12 +862,13 @@ shinyServer(function(session, input, output) {
    ) })
   
   ## ├Period ####
-  data_periodsPlot <- reactive({
+  data_periodsPlot <- eventReactive(input$plot_periods, {
 
     cosinor.df.plot() %>% ggplot(aes(x = group,
                                    y = period,
                                    color = group,
                                    fill = group)) +
+      geom_hline(yintercept = 0) +
       geom_jitter(width = .2,
                   alpha = .2) + 
       stat_summary(fun.data = mean_se,
@@ -872,18 +879,19 @@ shinyServer(function(session, input, output) {
                    alpha = 1,
                    width = .2) +
       geom_hline(yintercept = input$fixed_period_LD, color = "black", linetype = "dashed") +
-      facet_grid(factor(section, levels=c('LD', 'DD')) ~ .) +
+      facet_grid(factor(section, levels=c('LD', 'DD')) ~ .,
+                 switch="both", 
+                 labeller = as_labeller(c(LD = "Period (h)", DD = "Period (h)"))) +
       labs(x = NULL,
-           y = "Period (h)",
+           y = NULL,
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
-      #scale_x_discrete(limits = c("LD", "DD")) +
-      scale_y_continuous(breaks = seq(0, 48, 6)) +
-      # scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
-      # scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
+      scale_y_continuous(breaks = seq(0, 48, 6), 
+                         limits = input$periods_y_limits) +
       groupcolors_list() +
       theme(legend.position = "none",
             panel.grid.major.x = element_line(color = "gray90"),
-            axis.text.x = element_text(angle = 45, hjust = 1))
+            axis.text.x = element_text(angle = 45, hjust = 1),
+            strip.placement = "outside")
   })
   
   output$periodsPlot <- renderPlot({ data_periodsPlot() },
@@ -891,8 +899,7 @@ shinyServer(function(session, input, output) {
                                    width = function(){fig_width()}  )
   
   ## ├Amplitude ####
-  data_ampsPlot <- reactive({
-    
+  data_ampsPlot <- eventReactive(input$plot_amps, {
     cosinor.df.plot() %>% ggplot(aes(x = group,
                                 y = amp,
                                 color = group,
@@ -912,6 +919,7 @@ shinyServer(function(session, input, output) {
            caption = paste0("n=", nrow(cosinor.df.plot())/2)) +
       #scale_x_discrete(limits=c("LD", "DD")) +
       groupcolors_list() +
+      scale_y_continuous(limits = input$amps_y_limits) +
       #scale_colour_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       #scale_fill_manual(values = c(input$FigsLDColor, input$FigsDDColor)) +
       theme(legend.position = "none",
@@ -924,7 +932,7 @@ shinyServer(function(session, input, output) {
                                    width = function(){fig_width()} )
   
   ## ├Polar acrophase ####
-  data_acrospolarPlot <- reactive({
+  data_acrospolarPlot <- eventReactive(input$plot_acros,{
     cosinor.df.plot() %>% ggplot(aes(x = acro_24,
                                    y = R,
                                    color = section)) +
@@ -1138,42 +1146,57 @@ shinyServer(function(session, input, output) {
   # Periods plots
   output$periodsPlotDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("periodsPlots-", Sys.Date(), ".png"))
+      if (input$periodsPlot_device == "png") {
+        here(paste0("periodsPlot-", Sys.Date(), ".png"))
+      } else {
+        here(paste0("periodsPlot-", Sys.Date(), ".svg"))  
+      }
     },
     content = function(file){
       ggsave(file, 
              width = input$periodsPlot_W,
              height = input$periodsPlot_H,
              dpi = input$periodsPlot_DPI,
-             plot = data_periodsPlot())
+             plot = data_periodsPlot(),
+             device = input$periodsPlot_device)
     }
   )
   
   # Amplitude plots
   output$ampsPlotDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+      if (input$ampsPlot_device == "png") {
+        here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+      } else {
+        here(paste0("amplitudesPlots-", Sys.Date(), ".svg"))  
+      }
     },
     content = function(file){
       ggsave(file, 
              width = input$ampsPlot_W,
              height = input$ampsPlot_H,
              dpi = input$ampsPlot_DPI,
-             plot = data_ampsPlot())
+             plot = data_ampsPlot(),
+             device = input$ampsPlot_device)
     }
   )
   
   # Acrophase plots
   output$acrosPlotDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("acophasesPlots-", Sys.Date(), ".png"))
+      if (input$acrosPlot_device == "png") {
+        here(paste0("acophasesPlots-", Sys.Date(), ".png"))
+      } else {
+        here(paste0("acophasesPlots-", Sys.Date(), ".svg"))  
+      }
     },
     content = function(file){
       ggsave(file, 
              width = input$acrosPlot_W,
              height = input$acrosPlot_H,
              dpi = input$acrosPlot_DPI,
-             plot = data_acrospolarPlot())
+             plot = data_acrospolarPlot(),
+             device = input$acrosPlot_device)
     }
   )
   
