@@ -38,7 +38,7 @@ shinyUI(fluidPage(
   #theme = bslib::bs_theme(bootswatch = "flatly"),
   
   # Application title ####
-  titlePanel(paste0("CircaLuc v0.6 ", emo::ji("clock"))),
+  titlePanel(paste0("CircaLuc v0.7 ", emo::ji("clock"))),
   
   # Sidebar ####
   sidebarLayout(
@@ -135,7 +135,7 @@ shinyUI(fluidPage(
           fluidPage(
             fluidRow(
               h3("Preprocessing parameters:"),
-              column(width = 4,
+              column(width = 3,
                      numericInput("ZTcorte", "Start of LD section (hs):", 24, 
                                   min = 1, 
                                   max = 125),
@@ -148,7 +148,7 @@ shinyUI(fluidPage(
                                  c("Linear" = "linear",
                                    "Exponential" = "exponential"))
                      ),
-              column(width = 4,
+              column(width = 3,
                      numericInput("ZTLD", "End of LD section (hs):", 96,
                                   min = 1, 
                                   max = 250),
@@ -156,7 +156,7 @@ shinyUI(fluidPage(
                                   min = 1, 
                                   max = 250)
                      ),
-              column(width = 4,
+              column(width = 3,
                      numericInput("smo","Smoothing width (hs):", 12,
                                   min = 1, 
                                   max = 100),
@@ -166,12 +166,12 @@ shinyUI(fluidPage(
                      )), 
           fluidRow(
             h3("Light-Darkness cycle in LD:"),
-            column(width = 4,
+            column(width = 3,
                    numericInput("LD_duration", "Light-phase lenght (h):", 12, 
                                 min = 1, 
                                 max = 125)
             ),
-            column(width = 4,
+            column(width = 3,
                    selectInput("LD_starts_with", "Starts with:",
                                multiple = FALSE,
                                c("Light", "Darkness"),
@@ -216,8 +216,8 @@ shinyUI(fluidPage(
                      br(),
                      selectInput("preprocessed_sd", "Plot SD band:",
                                  multiple = FALSE,
-                                 choices = c("yes", "no"),
-                                 selected = "yes",
+                                 choices = c("SD", "SEM", "none"),
+                                 selected = "SD",
                                  width = 180),
                      selectInput("GroupColors",
                                  multiple = FALSE,
@@ -270,7 +270,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting individual wells for a given group:"),
             h4("Detrended luminescence for a given group (individual wells + group mean)"),
-            column(width = 6,
+            column(width = 2,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_indiv_preprocessed", "Plot section:",
@@ -282,38 +282,52 @@ shinyUI(fluidPage(
                                  choices = "",
                                  selected = "",
                                  width = 400),
-                     shinyWidgets::actionBttn(
-                       inputId = "plot_prepro2",
-                       label = "Plot!",
-                       color = "success",
-                       size = "sm",
-                       style = "material-flat",
-                       icon = icon("pencil"),
-                       block = TRUE
-                     ),
+                     sliderInput("preprocessed_indiv_y_limits", "Y-axis limits:",
+                                 min = -0.1, max = 0.1,
+                                 value = c(-0.1, 0.1)),
                      circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
-                     label = "Figure options and plotting",
+                     label = "Figure settings",
                      tooltip = tooltipOptions(title = "Click to see figure settings!")
-                   ))),
-          fluidRow(
-            plotOutput("detrended_indiv_Plot", height = "auto"),
-            br(),
+                   )),
+            column(width = 2, 
+                   shinyWidgets::actionBttn(
+                     inputId = "plot_prepro2",
+                     label = "Plot!",
+                     color = "success",
+                     size = "sm",
+                     style = "material-flat",
+                     icon = icon("pencil"),
+                     block = TRUE
+                   )),
             column(width = 4,
                    shinyWidgets::dropdownButton(
-                     numericInput("detrendedIndivPlot_W","Width (cm):", 20,
+                     numericInput("detrendedIndivPlot_W","Width (cm):", 8,
                                   min = 1, 
                                   max = 100),
-                     numericInput("detrendedIndivPlot_H","Height (cm):", 20,
+                     numericInput("detrendedIndivPlot_H","Height (cm):", 8,
                                   min = 1, 
                                   max = 100),
                      numericInput("detrendedIndivPlot_DPI","DPI:", 300,
                                   min = 1, 
                                   max = 3000),
+                     shinyWidgets::radioGroupButtons(
+                       inputId = "detrendedIndivPlot_device",
+                       label = "Format", 
+                       choices = c("png", "svg"),
+                       selected = "png",
+                       status = "primary"
+                     ),
                      downloadButton("detrendedIndivDownloadPlot", HTML("Download<br/>Plot")),
-                     circle = FALSE, status = "success", icon = icon("file"), width = "300px",
-                     label = "Download figure",
+                     circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
+                     label = "Download individual plot",
                      tooltip = tooltipOptions(title = "Click to see download options!")
-                   ))))
+                   ))
+            ),
+          fluidRow(
+            plotOutput("detrended_indiv_Plot", height = "auto")
+            ),
+          br(), br(), br(), br()
+          )
         ),
         # Periods ####
         tabPanel("Periods",
