@@ -317,7 +317,7 @@ shinyUI(fluidPage(
                        selected = "png",
                        status = "primary"
                      ),
-                     downloadButton("detrendedIndivDownloadPlot", HTML("Download<br/>Plot")),
+                     downloadButton("detrendedDownload_indiv_Plot", HTML("Download<br/>Plot")),
                      circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
                      label = "Download individual plot",
                      tooltip = tooltipOptions(title = "Click to see download options!")
