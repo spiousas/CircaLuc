@@ -673,6 +673,7 @@ shinyServer(function(session, input, output) {
       left_join(periods.df(), by = c("well", "section", "group")) %>%
       mutate(
         fit = map(data, ~nls(lumin_smoothed ~ alpha + amp * cos(2*pi*ZTTime/period - acro),
+                             control = nls.control(maxiter = 100, tol = 1e-04, minFactor = 1/4096),
                              data = .x,
                              start = list(alpha = 0, amp = 1, acro = 1))),
         tidied = map(fit, broom::tidy),
@@ -1118,7 +1119,7 @@ shinyServer(function(session, input, output) {
   # Detrended plot
   output$detrendedDownloadPlot <- downloadHandler(
     filename = function(){
-      if (input$detrendedPlot_device == "png") {
+      if (input$detrendedIndivPlot_device == "png") {
         here(paste0("detrendedGroupedPlot-", Sys.Date(), ".png"))
       } else {
         here(paste0("detrendedGroupedPlot-", Sys.Date(), ".svg"))  
