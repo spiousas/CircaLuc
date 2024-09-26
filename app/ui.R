@@ -78,7 +78,7 @@ shinyUI(fluidPage(
             fluidRow(
               h3("Raw data plot"),
               h4("Luminescence (individual wells + mean)"),
-              column(width = 4,
+              column(width = 2,
                      shinyWidgets::dropdownButton(
                        h4("List of settings"),
                        selectInput("raw_y_scale", "Luminosity scale:",
@@ -199,7 +199,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting group means:"),
             h4("Detrended luminescence (group means)"),
-            column(width = 4,
+            column(width = 2,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_grouped_preprocessed", "Plot section:",
@@ -277,7 +277,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting individual wells for a given group:"),
             h4("Detrended luminescence for a given group (individual wells + group mean)"),
-            column(width = 4,
+            column(width = 2,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_indiv_preprocessed", "Plot section:",
@@ -435,7 +435,7 @@ shinyUI(fluidPage(
             br(),
             plotOutput("cosinorPlot", height = "auto"),
             br(),
-            column(width = 4,
+            column(width = 2,
                    shinyWidgets::dropdownButton(
                      numericInput("cosinorPlot_W","Width (cm):", 8,
                                   min = 1, 
@@ -487,7 +487,7 @@ shinyUI(fluidPage(
            fluidRow(
              h2("Cosinor fit results"),
              h3("Periods"),
-             column(width = 4,
+             column(width = 2,
                     shinyWidgets::dropdownButton(
                       h4("List of settings"),
                       sliderInput("periods_y_limits", "Y-axis limits:",
@@ -536,7 +536,7 @@ shinyUI(fluidPage(
            ),
            fluidRow(
              h3("Amplitude"),
-             column(width = 4,
+             column(width = 2,
                     shinyWidgets::dropdownButton(
                       h4("List of settings"),
                       sliderInput("amps_y_limits", "Y-axis limits:",
@@ -585,7 +585,7 @@ shinyUI(fluidPage(
            ),
            fluidRow(
              h3("Acrophase"),
-             column(width = 4,
+             column(width = 2,
                     shinyWidgets::dropdownButton(
                       h4("List of settings"),
                       circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
