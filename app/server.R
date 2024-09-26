@@ -73,7 +73,7 @@ shinyServer(function(session, input, output) {
     mutate(well = if_else(str_detect(well, "-"), well, paste0("GroupA-", well))) %>%
     separate(well, c("group", "well"), sep = "-") %>%
     group_by(group, well) %>%
-    summarise(ZTTime = ZTTime[1:length(na.trim(lumin))],
+    reframe(ZTTime = ZTTime[1:length(na.trim(lumin))],
               lumin = na.trim(lumin)) %>% # Clean trailing NAs in Lumin
     mutate(
       ZTTime = na.approx(ZTTime),
@@ -653,7 +653,7 @@ shinyServer(function(session, input, output) {
     
   })
   
-  output$table_periods <- renderDataTable(
+  output$table_periods <- DT::renderDT(
     periods.df()
     )
 
@@ -736,7 +736,7 @@ shinyServer(function(session, input, output) {
   })
 
   ## ├Cosinor table ####
-  output$table_cosinor <- renderDataTable(
+  output$table_cosinor <- DT::renderDT(
     cosinor.df()
   )
   
@@ -995,7 +995,7 @@ shinyServer(function(session, input, output) {
                                 width = function(){fig_width()})
   
   ## ├Rayleigh table ####
-  output$table_rayleigh <- renderDataTable(
+  output$table_rayleigh <- DT::renderDT(
     circ.means()
   )
   
@@ -1009,7 +1009,7 @@ shinyServer(function(session, input, output) {
     tidy(aov(m_periods_DD))
   })
   
-  output$stat_periods_DD <- renderDataTable(
+  output$stat_periods_DD <- DT::renderDT(
     stat_periods_DD()
   )
   
@@ -1027,7 +1027,7 @@ shinyServer(function(session, input, output) {
   #   )
   # })
   
-  output$pairwise_periods_DD <- renderDataTable(
+  output$pairwise_periods_DD <- DT::renderDT(
     pairwise_periods_DD(), options = list(
       paging = TRUE,
       pageLength =  5)
@@ -1042,7 +1042,7 @@ shinyServer(function(session, input, output) {
     tidy(aov(m_amps_DD))
   })
   
-  output$stat_amps_DD <- renderDataTable(
+  output$stat_amps_DD <- DT::renderDT(
     stat_amps_DD()
   )
   
@@ -1060,7 +1060,7 @@ shinyServer(function(session, input, output) {
   #   )
   # })
   
-  output$pairwise_amps_DD <- renderDataTable(
+  output$pairwise_amps_DD <- DT::renderDT(
     pairwise_amps_DD(), options = list(
       paging = TRUE,
       pageLength =  5)
@@ -1105,24 +1105,29 @@ shinyServer(function(session, input, output) {
   # Raw plot
   output$rawDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("rawPlot-", Sys.Date(), ".png"))
+      if (input$rawPlot_device == "png") {
+        paste0("rawPlot-", Sys.Date(), ".png")
+      } else {
+        paste0("rawPlot-", Sys.Date(), ".svg")
+      }
     },
     content = function(file){
       ggsave(file, 
              width = input$rawPlot_W,
              height = input$rawPlot_H,
              dpi = input$rawPlot_DPI,
-             plot = data_rawPlot())
+             plot = data_rawPlot(),
+             device = input$rawPlot_device)
     }
   )
   
   # Detrended plot
   output$detrendedDownloadPlot <- downloadHandler(
     filename = function(){
-      if (input$detrendedIndivPlot_device == "png") {
-        here(paste0("detrendedGroupedPlot-", Sys.Date(), ".png"))
+      if (input$detrendedPlot_device == "png") {
+        paste0("detrendedGroupedPlot-", Sys.Date(), ".png")
       } else {
-        here(paste0("detrendedGroupedPlot-", Sys.Date(), ".svg"))  
+        paste0("detrendedGroupedPlot-", Sys.Date(), ".svg")
       }
     },
     content = function(file){
@@ -1138,10 +1143,10 @@ shinyServer(function(session, input, output) {
   # Detrended plot
   output$detrendedDownload_indiv_Plot <- downloadHandler(
     filename = function(){
-      if (input$detrendedPlot_device == "png") {
-        here(paste0("detrended_indiv_Plot-", Sys.Date(), ".png"))
+      if (input$detrendedIndivPlot_device == "png") {
+        paste0("detrended_indiv_Plot-", Sys.Date(), ".png")
       } else {
-        here(paste0("detrended_indiv_Plot-", Sys.Date(), ".svg"))  
+        paste0("detrended_indiv_Plot-", Sys.Date(), ".svg")
       }
     },
     content = function(file){
@@ -1157,7 +1162,11 @@ shinyServer(function(session, input, output) {
   # Cosinor plot
   output$cosinorDownloadPlot <- downloadHandler(
     filename = function(){
-      here(paste0("cosinorPlot-", Sys.Date(), ".png"))
+      if (input$cosinorPlot_device == "png") {
+        paste0("cosinorPlot-", Sys.Date(), ".png")
+      } else {
+        paste0("cosinorPlot-", Sys.Date(), ".svg")
+      }
     },
     content = function(file){
       ggsave(file, 
@@ -1172,9 +1181,9 @@ shinyServer(function(session, input, output) {
   output$periodsPlotDownloadPlot <- downloadHandler(
     filename = function(){
       if (input$periodsPlot_device == "png") {
-        here(paste0("periodsPlot-", Sys.Date(), ".png"))
+        paste0("periodsPlot-", Sys.Date(), ".png")
       } else {
-        here(paste0("periodsPlot-", Sys.Date(), ".svg"))  
+        paste0("periodsPlot-", Sys.Date(), ".svg")
       }
     },
     content = function(file){
@@ -1191,9 +1200,9 @@ shinyServer(function(session, input, output) {
   output$ampsPlotDownloadPlot <- downloadHandler(
     filename = function(){
       if (input$ampsPlot_device == "png") {
-        here(paste0("amplitudesPlots-", Sys.Date(), ".png"))
+        paste0("amplitudesPlots-", Sys.Date(), ".png")
       } else {
-        here(paste0("amplitudesPlots-", Sys.Date(), ".svg"))  
+        paste0("amplitudesPlots-", Sys.Date(), ".svg")
       }
     },
     content = function(file){
@@ -1210,9 +1219,9 @@ shinyServer(function(session, input, output) {
   output$acrosPlotDownloadPlot <- downloadHandler(
     filename = function(){
       if (input$acrosPlot_device == "png") {
-        here(paste0("acophasesPlots-", Sys.Date(), ".png"))
+        paste0("acophasesPlots-", Sys.Date(), ".png")
       } else {
-        here(paste0("acophasesPlots-", Sys.Date(), ".svg"))  
+        paste0("acophasesPlots-", Sys.Date(), ".svg")
       }
     },
     content = function(file){

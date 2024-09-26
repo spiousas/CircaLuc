@@ -9,7 +9,7 @@
 
 pacman::p_load(shiny, viridis, tidyverse, zoo, shinyjs, scales, gsignal, 
                here, circular, gghalves, writexl, shinyWidgets, scales,
-               patchwork, ggsci, shinyWidgets, svglite)
+               patchwork, ggsci, shinyWidgets, svglite, broom)
 pacman::p_load_gh("emo")
 
 useShinyjs()
@@ -38,7 +38,7 @@ shinyUI(fluidPage(
   #theme = bslib::bs_theme(bootswatch = "flatly"),
   
   # Application title ####
-  titlePanel(paste0("CircaLuc v0.7 ", emo::ji("clock"))),
+  titlePanel(paste("CircaLuc v0.8", emo::ji("microbe"), emo::ji("petri_dish"), emo::ji("clock"))),
   
   # Sidebar ####
   sidebarLayout(
@@ -78,7 +78,7 @@ shinyUI(fluidPage(
             fluidRow(
               h3("Raw data plot"),
               h4("Luminescence (individual wells + mean)"),
-              column(width = 2,
+              column(width = 4,
                      shinyWidgets::dropdownButton(
                        h4("List of settings"),
                        selectInput("raw_y_scale", "Luminosity scale:",
@@ -109,18 +109,25 @@ shinyUI(fluidPage(
                        block = TRUE
                      )),
               column(width = 2,
-                     dropdownButton(
-                       numericInput("rawPlot_W","Width (cm):", 20,
+                     shinyWidgets::dropdownButton(
+                       numericInput("rawPlot_W","Width (cm):", 8,
                                     min = 1, 
                                     max = 100),
-                       numericInput("rawPlot_H","Height (cm):", 20,
+                       numericInput("rawPlot_H","Height (cm):", 8,
                                     min = 1, 
                                     max = 100),
                        numericInput("rawPlot_DPI","DPI:", 300,
                                     min = 1, 
                                     max = 3000),
+                       shinyWidgets::radioGroupButtons(
+                         inputId = "rawPlot_device",
+                         label = "Format", 
+                         choices = c("png", "svg"),
+                         selected = "png",
+                         status = "primary"
+                       ),
                        downloadButton("rawDownloadPlot", HTML("Download<br/>Plot")),
-                       circle = FALSE, status = "primary", icon = icon("file"), width = "300px",
+                       circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
                        label = "Download raw data plot",
                        tooltip = tooltipOptions(title = "Click to see download options!")
                      )))
@@ -192,7 +199,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting group means:"),
             h4("Detrended luminescence (group means)"),
-            column(width = 2,
+            column(width = 4,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_grouped_preprocessed", "Plot section:",
@@ -270,7 +277,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Plotting individual wells for a given group:"),
             h4("Detrended luminescence for a given group (individual wells + group mean)"),
-            column(width = 2,
+            column(width = 4,
                    shinyWidgets::dropdownButton(
                      h4("List of settings"),
                      selectInput("section_indiv_preprocessed", "Plot section:",
@@ -389,7 +396,7 @@ shinyUI(fluidPage(
                  ),
                  fluidRow(
                    column(width = 12,
-                          dataTableOutput('table_periods')
+                          DT::DTOutput('table_periods')
                           )
                    )
                  ),
@@ -428,29 +435,34 @@ shinyUI(fluidPage(
             br(),
             plotOutput("cosinorPlot", height = "auto"),
             br(),
-            column(width = 3,
-                  downloadButton("cosinorDownloadPlot", HTML("Download<br/>Plot"))
-            ),
-            column(width = 2,
-                   numericInput("cosinorPlot_W","Width (cm):", 20,
-                                min = 1, 
-                                max = 100)
-            ),
-            column(width = 2,
-                   numericInput("cosinorPlot_H","Height (cm):", 10,
-                                min = 1, 
-                                max = 100)
-            ),
-            column(width = 2,
-                   numericInput("cosinorPlot_DPI","DPI:", 300,
-                                min = 1, 
-                                max = 3000)
-            )
+            column(width = 4,
+                   shinyWidgets::dropdownButton(
+                     numericInput("cosinorPlot_W","Width (cm):", 8,
+                                  min = 1, 
+                                  max = 100),
+                     numericInput("cosinorPlot_H","Height (cm):", 8,
+                                  min = 1, 
+                                  max = 100),
+                     numericInput("cosinorPlot_DPI","DPI:", 300,
+                                  min = 1, 
+                                  max = 3000),
+                     shinyWidgets::radioGroupButtons(
+                       inputId = "cosinorPlot_device",
+                       label = "Format", 
+                       choices = c("png", "svg"),
+                       selected = "png",
+                       status = "primary"
+                     ),
+                     downloadButton("cosinorDownloadPlot", HTML("Download<br/>Plot")),
+                     circle = FALSE, status = "primary", icon = icon("file"), width = "100px",
+                     label = "Download codsinor fit plot",
+                     tooltip = tooltipOptions(title = "Click to see download options!")
+                   ))
           ),
           fluidRow(
             h3("Cosinor data"),
             column(width = 12,
-                   dataTableOutput('table_cosinor')
+                   DT::DTOutput('table_cosinor')
             )
           )
         ),
@@ -475,7 +487,7 @@ shinyUI(fluidPage(
            fluidRow(
              h2("Cosinor fit results"),
              h3("Periods"),
-             column(width = 2,
+             column(width = 4,
                     shinyWidgets::dropdownButton(
                       h4("List of settings"),
                       sliderInput("periods_y_limits", "Y-axis limits:",
@@ -524,7 +536,7 @@ shinyUI(fluidPage(
            ),
            fluidRow(
              h3("Amplitude"),
-             column(width = 2,
+             column(width = 4,
                     shinyWidgets::dropdownButton(
                       h4("List of settings"),
                       sliderInput("amps_y_limits", "Y-axis limits:",
@@ -573,7 +585,7 @@ shinyUI(fluidPage(
            ),
            fluidRow(
              h3("Acrophase"),
-             column(width = 2,
+             column(width = 4,
                     shinyWidgets::dropdownButton(
                       h4("List of settings"),
                       circle = FALSE, status = "primary", icon = icon("gear"), width = "300px",
@@ -620,7 +632,7 @@ shinyUI(fluidPage(
           fluidRow(
             h3("Circular data"),
             column(width = 7,
-                   dataTableOutput('table_rayleigh')
+                   DT::DTOutput('table_rayleigh')
             )
           )
         ),
@@ -646,14 +658,14 @@ shinyUI(fluidPage(
                                       selected = c("All the wells"))
                    )
                  ),
-                 fluidRow(column(width = 4),
-                   column(width = 4,
+                 fluidRow(column(width = 3),
+                   column(width = 6,
                           actionBttn(
                             inputId = "start_stat",
                             label = "Run the analysis!",
                             color = "primary",
                             size = "sm",
-                            style = "unite",
+                            style = "material-flat",
                             icon = icon("refresh"),
                             block = TRUE
                           )),
@@ -667,7 +679,7 @@ shinyUI(fluidPage(
                   implemented using the lm function of base R using the period ~ group formula:",
                   br(),
                   column(width = 12,
-                        dataTableOutput('stat_periods_DD'))
+                        DT::DTOutput('stat_periods_DD'))
                  ),
                  # fluidRow(
                  #   h4("Multiple comparisons"),
@@ -679,7 +691,7 @@ shinyUI(fluidPage(
                  #                 "Holm-Bonferroni" = "holm"),
                  #               selected = c("Bonferroni")),
                  #   column(width = 12,
-                 #        dataTableOutput('pairwise_periods_DD'))
+                 #        DT::DTOutput('pairwise_periods_DD'))
                  # ),
                  ## Amplitudes ####
                  fluidRow(
@@ -689,7 +701,7 @@ shinyUI(fluidPage(
                   implemented using the lm function of base R using the amplitude ~ group formula:",
                   br(),
                   column(width = 12,
-                         dataTableOutput('stat_amps_DD'))
+                         DT::DTOutput('stat_amps_DD'))
                  ),
                  # fluidRow(
                  #   h4("Multiple comparisons"),
@@ -701,7 +713,7 @@ shinyUI(fluidPage(
                  #                 "Holm-Bonferroni" = "holm"),
                  #               selected = c("Bonferroni")),
                  #   column(width = 12,
-                 #          dataTableOutput('pairwise_amps_DD'))
+                 #          DT::DTOutput('pairwise_amps_DD'))
                  # )
         ),
         # Settings ####
